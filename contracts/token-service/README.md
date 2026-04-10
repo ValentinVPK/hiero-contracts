@@ -1,8 +1,8 @@
-## Hedera Token Service (HTS) System Contract Functions
+## Hiero Token Service (HTS) System Contract Functions
 
-The Hedera Token Service (HTS) System Contract is accessible at address `0x167` on the Hedera network. This contract interface provides a comprehensive set of methods for creating, managing, and interacting with various types of tokens on the Hedera network.
+The Hiero Token Service (HTS) System Contract is accessible at address `0x167` on the Hiero network. This contract interface provides a comprehensive set of methods for creating, managing, and interacting with various types of tokens on the Hiero network.
 
-The table below outlines the available Hedera Token Service (HTS) System Contract functions:
+The table below outlines the available Hiero Token Service (HTS) System Contract functions:
 
 | Function Name                          | Function Selector Hash | Consensus Node Release Version                                               | HIP                                            | Method Interface                                                                                                                                                              | Comments                                                       |
 |----------------------------------------|------------------------|------------------------------------------------------------------------------|------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
@@ -80,9 +80,9 @@ The table below outlines the available Hedera Token Service (HTS) System Contrac
 | `wipeTokenAccountNFT`                  | `0xf7f38e26`           | [0.29](https://docs.hedera.com/hedera/networks/release-notes/services#v0.29) | [HIP 514](https://hips.hedera.com/hip/hip-514) | `wipeTokenAccountNFT(address token, address account, int64[] serialNumbers)`                                                                                                  |                                                                |
 
 
-The Hedera network also make facade contract calls available to EOAs for improved experience.
+The Hiero network also make facade contract calls available to EOAs for improved experience.
 Facade function allow for EOAs to make calls without requiring a deployed contract
-The table below outlines the available Hedera Token Service (HTS) System Contract facade functions:
+The table below outlines the available Hiero Token Service (HTS) System Contract facade functions:
 
 | Function Name      | Function Selector Hash | Consensus Node Release Version                                                        | HIP                                             | Method Interface                                                                                       | Comments |
 |--------------------|------------------------|---------------------------------------------------------------------------------------|-------------------------------------------------|--------------------------------------------------------------------------------------------------------|----------|

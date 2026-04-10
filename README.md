@@ -1,27 +1,31 @@
 :warning: :bangbang: ***All examples and contracts in this repository are exploration code and have NOT been audited. Use them at your own risk!*** :bangbang: :warning:
 
-# Hedera Smart Contracts
+# Hiero Smart Contracts
 
-Reference library for Smart Contracts utilized by the Hedera network with supporting files and examples.
+Reference library for Smart Contracts utilized on the Hiero network with supporting files and examples.
 
 ## Overview
 
-The Hedera network utilizes system contracts at a reserved contract address on the EVM to surface HAPI service functionality through EVM processed transactions.
+The Hiero network utilizes system contracts at a reserved contract address on the EVM to surface HAPI service functionality through EVM processed transactions.
 These system contracts are precompiled smart contracts whose function selectors are mapped to defined network logic.
 In this way EVM users can utilize exposed HAPI features natively in their smart contracts.
 
-The system contract functions are defined in this library and implemented by the [Hedera Services](https://github.com/hiero-ledger/hiero-consensus-node) repo as part of consensus node functionality.
+The system contract functions are defined in this library and implemented by the [Hiero consensus node](https://github.com/hiero-ledger/hiero-consensus-node) repository as part of consensus node functionality.
 
-### Hedera Token Service (HTS) System Contract
+## Backward Compatibility
 
-The Hedera Token Service (HTS) functionality is defined by the [IHederaTokenService.sol](contracts/token-service/IHederaTokenService.sol) interface smart contract as defined in [HIP 206](https://hips.hedera.com/hip/hip-206), [HIP 376](https://hips.hedera.com/hip/hip-376) and [HIP 514](https://hips.hedera.com/hip/hip-514). The contract is exposed via the `0x167` address.
+This repository targets the **Hiero** ecosystem. Documentation and project naming use **Hiero** throughout. However, the **Solidity public API** intentionally retains **Hedera-prefixed** identifiers for backward compatibility with existing contracts and tooling.
+
+### Hiero Token Service (HTS) System Contract
+
+The Hiero Token Service (HTS) functionality is defined by the [IHederaTokenService.sol](contracts/token-service/IHederaTokenService.sol) interface smart contract as defined in [HIP 206](https://hips.hedera.com/hip/hip-206), [HIP 376](https://hips.hedera.com/hip/hip-376) and [HIP 514](https://hips.hedera.com/hip/hip-514). The contract is exposed via the `0x167` address.
 Reference smart contracts to call these functions can be found under [contracts/token-service](contracts/token-service)
 
 For further details on methods, hashes and availability please refer to [HTS System Contract Methods](contracts/token-service/README.md)
 
-### Hedera Account Service (HAS) System Contract
+### Hiero Account Service (HAS) System Contract
 
-The Hedera Account Service (HAS) functionality is defined by the [IHederaAccountService.sol](contracts/account-service/IHederaAccountService.sol) interface smart contract as defined in [HIP 632](https://hips.hedera.com/hip/hip-632) and [HIP 906](https://hips.hedera.com/hip/hip-906). The contract is exposed via the `0x16a` address.
+The Hiero Account Service (HAS) functionality is defined by the [IHederaAccountService.sol](contracts/account-service/IHederaAccountService.sol) interface smart contract as defined in [HIP 632](https://hips.hedera.com/hip/hip-632) and [HIP 906](https://hips.hedera.com/hip/hip-906). The contract is exposed via the `0x16a` address.
 Reference smart contracts to call these functions as well as examples can be found under [contracts/account-service](contracts/account-service)
 
 For further details on methods, hashes and availability please refer to [HAS System Contract Methods](contracts/account-service/README.md)
@@ -65,4 +69,3 @@ to [oss@hedera.com](mailto:oss@hedera.com).
 ## License
 
 [Apache License 2.0](LICENSE)
-
