@@ -30,11 +30,7 @@
   },
   "homepage": "https://github.com/hiero-ledger/hiero-contracts/#readme",
   "scripts": {
-    "hh:compile": "hardhat compile",
-    "hh:test": "hardhat test",
-    "prepare": "husky install",
-    "release": "cd ./contracts && npm publish --access public --no-git-tag",
-    "version": "cd ./contracts && npm version"
+    "bump-contracts-version": "node scripts/bump-contracts-version.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
@@ -49,7 +45,8 @@
     "husky": "^9.1.7",
     "mocha-junit-reporter": "^2.2.0",
     "mocha-multi-reporters": "^1.5.1",
-    "prettier": "3.6.2"
+    "prettier": "3.6.2",
+    "replace": "^1.2.2"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
