@@ -117,7 +117,7 @@ jobs:
           if [[ "${{ github.ref_name }}" == "${{ github.event.repository.default_branch }}" && "${RELEASE_TYPE}" == "rc" ]]; then
             echo "::notice::RC flow dispatched to rc/* branch; skipping current run on default branch"
             PROCEED="false"
-          elif [[ "${{ github.ref_name }}" == "${{ github.event.repository.default_branch }}" ]]; then
+          elif [[ "${{ github.ref_name }}" == "${{ github.event.repository.default_branch }}" || "${{ github.ref_name }}" == rc/* ]]; then
             if SEMREL_OUTPUT=$(npx semantic-release --dry-run 2>&1); then
               if echo "${SEMREL_OUTPUT}" | grep -q "The next release version is"; then
                 echo "::notice::Semantic Release detected a new version"
@@ -134,10 +134,6 @@ jobs:
               echo "::notice::Semantic Release did NOT run successfully"
               PROCEED="false"
             fi
-          elif [[ "${{ github.ref_name }}" == rc/* ]]; then
-            # On rc/* branch, proceed and get version from package.json
-            jq -r '.version' './package.json' > VERSION
-            PROCEED="true"
           else
             if [[ "${DRY_RUN_ENABLED}" == "true" ]]; then
               jq -r '.version' './package.json' > VERSION
@@ -280,7 +276,7 @@ jobs:
           fi
 
       - name: Skip semantic-release on non-default branch dry run
-        if: ${{ github.event.repository.default_branch != github.ref_name }}
+        if: ${{ github.event.repository.default_branch != github.ref_name && !startsWith(github.ref_name, 'rc/') }}
         run: |
           echo "::notice::Skipping semantic-release for non-default branch dry run"
 
