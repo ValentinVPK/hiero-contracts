@@ -26,7 +26,7 @@ env:
   RELEASE_TYPE: ${{ inputs.release-type }}
 
 permissions:
-  actions: read
+  actions: write
   checks: write
   contents: write
   id-token: write
@@ -77,17 +77,28 @@ jobs:
             marked-mangle@1.1.6 marked-gfm-heading-id@3.1.2 conventional-changelog-conventionalcommits@9.1.0 \
             @semantic-release/commit-analyzer@13.0.1
 
-      - name: Update semantic-release config for RC release
+      - name: Create RC branch from default and dispatch workflow
         if: ${{ github.event.repository.default_branch == github.ref_name && inputs.release-type == 'rc' }}
-        working-directory: contracts
         env:
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
-          jq --arg branch "${DEFAULT_BRANCH}" '.branches = [{"name":$branch,"prerelease":"rc"}]' .releaserc.json > .releaserc.tmp.json
-          mv .releaserc.tmp.json .releaserc.json
-          echo "::group::.releaserc.json"
-          cat .releaserc.json
-          echo "::endgroup::"
+          VER=$(jq -r '.version' package.json)
+          VER=${VER%-SNAPSHOT}
+          BRANCH="rc/${VER}"
+          if git ls-remote --heads origin "${BRANCH}" | grep -q "${BRANCH}"; then
+            echo "::notice::RC branch already exists: ${BRANCH}"
+          else
+            git config user.name "${{ vars.GIT_USER_NAME }}"
+            git config user.email "${{ vars.GIT_USER_EMAIL }}"
+            git checkout -b "${BRANCH}"
+            git push origin "${BRANCH}"
+            echo "::notice::Created branch ${BRANCH}"
+          fi
+          curl -s -X POST -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${REPO}/actions/workflows/release.yml/dispatches" \
+            -d "{\"ref\":\"${BRANCH}\",\"inputs\":{\"dry-run-enabled\":${DRY_RUN_ENABLED},\"release-type\":\"rc\"}}"
+          echo "::notice::Dispatched workflow on ${BRANCH}"
 
       - name: Calculate Next Version
         id: calculate-version
@@ -101,7 +112,12 @@ jobs:
         run: |
           PROCEED="true"
           SEMREL_OUTPUT=""
-          if [[ "${{ github.ref_name }}" == "${{ github.event.repository.default_branch }}" ]]; then
+
+          # If RC requested on default branch, we already dispatched a run on rc/*; skip current run
+          if [[ "${{ github.ref_name }}" == "${{ github.event.repository.default_branch }}" && "${RELEASE_TYPE}" == "rc" ]]; then
+            echo "::notice::RC flow dispatched to rc/* branch; skipping current run on default branch"
+            PROCEED="false"
+          elif [[ "${{ github.ref_name }}" == "${{ github.event.repository.default_branch }}" ]]; then
             if SEMREL_OUTPUT=$(npx semantic-release --dry-run 2>&1); then
               if echo "${SEMREL_OUTPUT}" | grep -q "The next release version is"; then
                 echo "::notice::Semantic Release detected a new version"
@@ -118,6 +134,10 @@ jobs:
               echo "::notice::Semantic Release did NOT run successfully"
               PROCEED="false"
             fi
+          elif [[ "${{ github.ref_name }}" == rc/* ]]; then
+            # On rc/* branch, proceed and get version from package.json
+            jq -r '.version' './package.json' > VERSION
+            PROCEED="true"
           else
             if [[ "${DRY_RUN_ENABLED}" == "true" ]]; then
               jq -r '.version' './package.json' > VERSION
@@ -143,7 +163,7 @@ jobs:
           PROCEED="true"
           OUTVER=""
 
-          if [[ "${{ steps.calculate-version.outputs.need-release }}" == "true" ]] && [[ -f VERSION ]]; then
+          if [[ -f VERSION ]]; then
             TRIMMED_VERSION=$(tr -d '[:space:]' < VERSION)
             OUTVER="${TRIMMED_VERSION}"
             echo "Using computed version: ${TRIMMED_VERSION}"
@@ -225,7 +245,6 @@ jobs:
           git_tag_gpgsign: false
 
       - name: Install Semantic Release
-        if: ${{ github.event.repository.default_branch == github.ref_name }}
         working-directory: contracts
         run: |
           npm install --no-save \
@@ -238,18 +257,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Update semantic-release config for RC release
-        if: ${{ github.event.repository.default_branch == github.ref_name && inputs.release-type == 'rc' }}
-        working-directory: contracts
-        env:
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          jq --arg branch "${DEFAULT_BRANCH}" '.branches = [{"name":$branch,"prerelease":"rc"}]' .releaserc.json > .releaserc.tmp.json
-          mv .releaserc.tmp.json .releaserc.json
-          echo "::group::.releaserc.json"
-          cat .releaserc.json
-          echo "::endgroup::"
-
       - name: Publish Semantic Release
         env:
           GITHUB_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
@@ -257,7 +264,7 @@ jobs:
           GIT_AUTHOR_EMAIL: ${{ vars.GIT_USER_EMAIL }}
           GIT_COMMITTER_NAME: ${{ vars.GIT_USER_NAME }}
           GIT_COMMITTER_EMAIL: ${{ vars.GIT_USER_EMAIL }}
-        if: ${{ github.event.repository.default_branch == github.ref_name }}
+        if: ${{ needs.prepare-release.outputs.need-release == 'true' }}
         working-directory: contracts
         run: |
           FLAGS=""
