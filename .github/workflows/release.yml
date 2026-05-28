@@ -44,6 +44,11 @@ jobs:
     if: ${{ inputs.release-type == 'rc' && github.ref_name == github.event.repository.default_branch }}
     runs-on: hl-contr-lin-lg
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
+        with:
+          egress-policy: audit
+
       - name: Prepare Job
         uses: pandaswhocode/initialize-github-job@d93cd457947758129c6d93e09f89ad528119960f # 1.0.8
         with:
@@ -95,6 +100,11 @@ jobs:
       is_prerelease: ${{ steps.release_meta.outputs.is_prerelease }}
       npm_dist_tag: ${{ steps.release_mode.outputs.npm_dist_tag }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
+        with:
+          egress-policy: audit
+
       - name: Prepare Job
         uses: pandaswhocode/initialize-github-job@d93cd457947758129c6d93e09f89ad528119960f # 1.0.8
         with:
@@ -223,6 +233,11 @@ jobs:
       npm-artifact-name: ${{ steps.set-publish-data.outputs.artifact-name }}
 
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
+        with:
+          egress-policy: audit
+
       - name: Prepare Job
         uses: pandaswhocode/initialize-github-job@d93cd457947758129c6d93e09f89ad528119960f # 1.0.8
         with:
@@ -349,6 +364,11 @@ jobs:
       PR_TITLE: ${{ needs.prepare-release.outputs.pr_title }}
       MILESTONE: ${{ needs.prepare-release.outputs.milestone }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
+        with:
+          egress-policy: audit
+
       - name: Prepare Job
         uses: pandaswhocode/initialize-github-job@d93cd457947758129c6d93e09f89ad528119960f # 1.0.8
         with:
@@ -423,6 +443,11 @@ jobs:
       - prepare-release
       - create-github-release
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
+        with:
+          egress-policy: audit
+
       - name: Prepare Release
         uses: pandaswhocode/initialize-github-job@d93cd457947758129c6d93e09f89ad528119960f # 1.0.8
         with:
