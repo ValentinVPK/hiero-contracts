@@ -83,8 +83,8 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
         return tokenAddress;
     }
 
-    function createFungibleTokenWithSECP256K1AdminKeyAssociateAndTransferToAddressPublic(address treasury, bytes memory adminKey, int64 amount) public payable {
-        address tokenAddress = this.createFungibleTokenWithSECP256K1AdminKeyPublic{value : msg.value}(treasury, adminKey);
+    function createFungibleTokenWithSECP256K1AdminKeyAssociateAndTransferToAddressPublic(address /* treasury */, bytes memory adminKey, int64 amount) public payable {
+        address tokenAddress = this.createFungibleTokenWithSECP256K1AdminKeyPublic{value : msg.value}(address(this), adminKey);
         this.associateTokenPublic(msg.sender, tokenAddress);
         this.grantTokenKycPublic(tokenAddress, msg.sender);
         int responseCode = HederaTokenService.transferToken(tokenAddress, address(this), msg.sender, amount);
