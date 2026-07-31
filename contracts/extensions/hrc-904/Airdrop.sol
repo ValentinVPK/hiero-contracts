@@ -94,7 +94,7 @@ contract Airdrop is HederaTokenService {
     // @param receiver The address receiving all NFTs
     // @param serials Array of serial numbers corresponding to each NFT
     // @return responseCode The response code from the airdrop operation (22 = success)
-    function multipleNftAirdrop(address[] memory nfts, address sender, address receiver, int64[] memory serials) public returns (int64 responseCode) {
+    function multipleNftAirdrop(address[] memory nfts, address sender, address receiver, int64[] memory serials) public payable returns (int64 responseCode) {
         uint256 length = nfts.length;
         IHederaTokenService.TokenTransferList[] memory tokenTransfers = new IHederaTokenService.TokenTransferList[](length);
         for (uint256 i = 0; i < length; i++)
