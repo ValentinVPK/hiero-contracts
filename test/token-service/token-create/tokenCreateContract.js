@@ -40,10 +40,9 @@ describe('TokenCreateContract Test Suite', function () {
     ]);
     erc20Contract = await utils.deployERC20Contract();
     await utils.deployERC721Contract();
-    tokenAddress = await utils.createFungibleTokenWithSECP256K1AdminKey(
+    tokenAddress = await utils.createFungibleToken(
       tokenCreateContract,
       signers[0].address,
-      utils.getSignerCompressedPublicKey(),
     );
     await hapi.updateTokenKeys(tokenAddress, [
       await tokenCreateContract.getAddress(),
