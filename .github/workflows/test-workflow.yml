@@ -98,6 +98,12 @@ jobs:
         run: npx @hashgraph/solo@${{ inputs.soloVersion || '0.84.0' }} one-shot falcon deploy --values-file .github/falcon.yml --dev
         timeout-minutes: 15
 
+      - name: Debug - list namespaces and pods
+        if: always()
+        run: |
+          kubectl get ns
+          kubectl get pods -A -o wide
+
       - name: Forward solo ports
         run: .github/scripts/forward-ports.sh
 
