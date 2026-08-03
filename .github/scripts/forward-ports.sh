@@ -9,13 +9,16 @@ set -euo pipefail
 
 FORWARDS=(
   "mirror-ingress-controller|5551:80"
-  "network-node|50211:50211"
+  "network-node1|50211:50211"
   "relay-1|7546:7546"
   "mirror-1-grpc|5600:5600"
 )
 
 ps aux | grep "port-forward" | grep kubectl | awk '{print $2}' | xargs -r kill -9
-NS="$(kubectl get ns -o name | sed 's|^namespace/||' | grep 'hiero' | head -n1)"
+
+# solo 0.84 names the deployment namespace after the runner (e.g. rss-<runner>),
+# so derive it from where the consensus node pod runs instead of hardcoding a name.
+NS="$(kubectl get pods -A --no-headers | grep -E 'network-node' | head -n1 | awk '{print $1}')"
 
 listen() {
   local pod="$1"
@@ -32,6 +35,7 @@ listen() {
 
 for row in "${FORWARDS[@]}"; do
   IFS='|' read -r include ports <<<"$row"
-  POD="$(kubectl get pods -n "$NS" --no-headers | grep -E "$include" | head -n 1 | awk '{print $1}' | head -n1)"
+  # grep -v '-ws-' excludes the websocket relay pod (relay-1-ws-*) so we match the JSON-RPC relay
+  POD="$(kubectl get pods -n "$NS" --no-headers | grep -E "$include" | grep -v -- '-ws-' | head -n 1 | awk '{print $1}')"
   listen "$POD" "$ports"
 done
