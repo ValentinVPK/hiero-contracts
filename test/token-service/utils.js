@@ -390,23 +390,7 @@ class Utils {
   }
 
   static async getSerialNumbers(mintNftTx) {
-    let tokenAddressReceipt;
-    try {
-      tokenAddressReceipt = await mintNftTx.wait();
-    } catch (error) {
-      // DIAGNOSTIC: the contract's bare revert() hides the HTS response code,
-      // so read the real code from the mirror node to explain the failure.
-      try {
-        const responseCode = await this.getHTSResponseCode(mintNftTx.hash);
-        throw new Error(
-          `mintToken reverted with HTS response code ${responseCode}`,
-        );
-      } catch (diagnosticError) {
-        throw diagnosticError.message?.startsWith('mintToken reverted')
-          ? diagnosticError
-          : error;
-      }
-    }
+    const tokenAddressReceipt = await mintNftTx.wait();
     const { serialNumbers } = tokenAddressReceipt.logs.filter(
       (e) => e.fragment.name === Constants.Events.MintedToken,
     )[0].args;
