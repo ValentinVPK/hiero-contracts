@@ -100,9 +100,10 @@ describe('TokenManagmentContract Test Suite', function () {
       tokenCreateCustomContractAddress,
     ]);
     erc20Contract = await utils.deployERC20Contract();
-    tokenAddress = await utils.createFungibleToken(
+    tokenAddress = await utils.createFungibleTokenWithSECP256K1AdminKey(
       tokenCreateContract,
       signers[0].address,
+      utils.getSignerCompressedPublicKey(),
     );
     await hapi.updateTokenKeys(tokenAddress, [
       await tokenCreateContract.getAddress(),
@@ -110,9 +111,10 @@ describe('TokenManagmentContract Test Suite', function () {
       await tokenManagmentContract.getAddress(),
       await tokenQueryContract.getAddress(),
     ]);
-    nftTokenAddress = await utils.createNonFungibleToken(
+    nftTokenAddress = await utils.createNonFungibleTokenWithSECP256K1AdminKey(
       tokenCreateContract,
       signers[0].address,
+      utils.getSignerCompressedPublicKey(),
     );
     await hapi.updateTokenKeys(nftTokenAddress, [
       await tokenCreateContract.getAddress(),
