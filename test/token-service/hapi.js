@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  AccountAllowanceApproveTransaction,
   AccountBalanceQuery,
   AccountId,
   AccountInfoQuery,
   AccountUpdateTransaction,
   Client,
   ContractId,
+  Hbar,
   KeyList,
+  NftId,
   PrivateKey,
   TokenAssociateTransaction,
   TokenId,
@@ -110,6 +113,47 @@ class Hapi {
 
     await (
       await tx.freezeWith(this.client).sign(pkSigners[0])
+    ).execute(this.client);
+    this.client.setOperator(config.operatorId, config.operatorKey);
+  }
+
+  async approveAllowances(
+    ownerIndex,
+    spenderAddress,
+    { hbar = 0, tokens = [], nfts = [] },
+  ) {
+    const signers = await connection.ethers.getSigners();
+    const pkSigners = (await utils.getHardhatSignersPrivateKeys()).map((pk) =>
+      PrivateKey.fromStringECDSA(pk),
+    );
+    const ownerId = await this.getAccountId(signers[ownerIndex].address);
+    const spenderId = await this.getAccountId(spenderAddress);
+    this.client.setOperator(ownerId, pkSigners[ownerIndex]);
+
+    const tx = new AccountAllowanceApproveTransaction();
+    if (hbar) {
+      tx.approveHbarAllowance(ownerId, spenderId, Hbar.fromTinybars(hbar));
+    }
+    for (const { token, amount } of tokens) {
+      tx.approveTokenAllowance(
+        TokenId.fromSolidityAddress(token),
+        ownerId,
+        spenderId,
+        amount,
+      );
+    }
+    for (const { token, serials } of nfts) {
+      for (const serial of serials) {
+        tx.approveTokenNftAllowance(
+          new NftId(TokenId.fromSolidityAddress(token), serial),
+          ownerId,
+          spenderId,
+        );
+      }
+    }
+
+    await (
+      await tx.freezeWith(this.client).sign(pkSigners[ownerIndex])
     ).execute(this.client);
     this.client.setOperator(config.operatorId, config.operatorKey);
   }

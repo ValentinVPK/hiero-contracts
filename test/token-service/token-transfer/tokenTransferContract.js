@@ -330,11 +330,16 @@ describe('TokenTransferContract Test Suite', function () {
             senderAccountID: signers[0].address,
             receiverAccountID: signers[1].address,
             serialNumber: mintedTokenSerialNumber,
-            isApproval: false,
+            isApproval: true,
           },
         ],
       },
     ];
+
+    // allowance for the NFT debit above
+    await hapi.approveAllowances(0, await tokenTransferContract.getAddress(), {
+      nfts: [{ token: nftTokenAddress, serials: [mintedTokenSerialNumber] }],
+    });
 
     const ownerBefore = await erc721Contract.ownerOf(
       nftTokenAddress,
@@ -426,7 +431,7 @@ describe('TokenTransferContract Test Suite', function () {
           {
             accountID: signers[0].address,
             amount: -amount,
-            isApproval: false,
+            isApproval: true,
           },
         ],
         nftTransfers: [],
@@ -439,11 +444,17 @@ describe('TokenTransferContract Test Suite', function () {
             senderAccountID: signers[0].address,
             receiverAccountID: signers[1].address,
             serialNumber: mintedTokenSerialNumber,
-            isApproval: false,
+            isApproval: true,
           },
         ],
       },
     ];
+
+    // allowances for the token + NFT debits (hbar needs none)
+    await hapi.approveAllowances(0, await tokenTransferContract.getAddress(), {
+      tokens: [{ token: tokenAddress, amount }],
+      nfts: [{ token: nftTokenAddress, serials: [mintedTokenSerialNumber] }],
+    });
     //execute, verify balances, check the owner of the nft,
     const cryptoTransferTx = await tokenTransferContract.cryptoTransferPublic(
       cryptoTransfers,
