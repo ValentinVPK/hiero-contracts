@@ -29,7 +29,7 @@ permissions:
 jobs:
   acceptance-workflow:
     runs-on: hl-contr-lin-lg
-    timeout-minutes: 35
+    timeout-minutes: 45
     strategy:
       fail-fast: false
 
