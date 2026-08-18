@@ -285,7 +285,7 @@ describe('TokenTransferContract Test Suite', function () {
     );
     const cryptoTransferReceipt = await cryptoTransferTx.wait();
     const responseCode = cryptoTransferReceipt.logs.filter(
-      (e) => e.fragment.name === Constants.Events.ResponseCode,
+      (e) => e.fragment && e.fragment.name === Constants.Events.ResponseCode,
     )[0].args[0];
 
     const signers0After = await pollForNewSignerBalanceUsingProvider(
@@ -352,7 +352,7 @@ describe('TokenTransferContract Test Suite', function () {
     );
     const cryptoTransferReceipt = await cryptoTransferTx.wait();
     const responseCode = cryptoTransferReceipt.logs.filter(
-      (e) => e.fragment.name === Constants.Events.ResponseCode,
+      (e) => e.fragment && e.fragment.name === Constants.Events.ResponseCode,
     )[0].args[0];
 
     const ownerAfter = await erc721Contract.ownerOf(
@@ -463,7 +463,7 @@ describe('TokenTransferContract Test Suite', function () {
     );
     const cryptoTransferReceipt = await cryptoTransferTx.wait();
     const responseCode = cryptoTransferReceipt.logs.filter(
-      (e) => e.fragment.name === Constants.Events.ResponseCode,
+      (e) => e.fragment && e.fragment.name === Constants.Events.ResponseCode,
     )[0].args[0];
     await new Promise((r) => setTimeout(r, 2000));
 
