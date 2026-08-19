@@ -21,14 +21,15 @@ contract TokenReject is HederaTokenService {
     // @param rejectingAddress The address rejecting the tokens
     // @param ftAddresses Array of fungible token addresses to reject
     // @param nftAddresses Array of NFT token addresses to reject
+    // @param serials Array of serial numbers corresponding to each NFT in nftAddresses
     // @return responseCode The response code from the reject operation (22 = success)
-    function rejectTokens(address rejectingAddress, address[] memory ftAddresses, address[] memory nftAddresses) public returns(int64 responseCode) {
+    function rejectTokens(address rejectingAddress, address[] memory ftAddresses, address[] memory nftAddresses, int64[] memory serials) public returns(int64 responseCode) {
         IHederaTokenService.NftID[] memory nftIDs = new IHederaTokenService.NftID[](nftAddresses.length);
         for (uint i; i < nftAddresses.length; i++)
         {
             IHederaTokenService.NftID memory nftId;
             nftId.nft = nftAddresses[i];
-            nftId.serial = 1;
+            nftId.serial = serials[i];
             nftIDs[i] = nftId;
         }
         responseCode = rejectTokens(rejectingAddress, ftAddresses, nftIDs);
