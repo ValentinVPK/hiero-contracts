@@ -423,23 +423,42 @@ class Utils {
   // Add Token association via hedera.js sdk
   // Client with signer - my private key example
 
-  static async associateToken(contract, tokenAddress, contractName) {
+  // A dedicated plain-ECDSA account used to sign EthereumTransactions. v0.77
+  // requires the sender of an EthereumTransaction to have a single ECDSA key, so
+  // the re-keyed (KeyList) signer accounts can no longer send — only be acted on.
+  // Fund it from a still-plain-ECDSA account BEFORE updateAccountKeys runs.
+  static async createTxSigner(funder, hbars = 100) {
+    const wallet = ethers.Wallet.createRandom().connect(ethers.provider);
+    await (
+      await funder.sendTransaction({
+        to: wallet.address,
+        value: ethers.parseEther(String(hbars)),
+      })
+    ).wait();
+    return wallet;
+  }
+
+  // Under the v0.77 security model a re-keyed (KeyList) account can no longer send
+  // an EthereumTransaction, so when txSigner is supplied the per-account associate
+  // calls are sent by it instead of the (re-keyed) signers. The account being
+  // associated is still signers[N] — it stays a subject, referenced by address.
+  static async associateToken(contract, tokenAddress, contractName, txSigner) {
     const signers = await ethers.getSigners();
     const associateTx1 = await ethers.getContractAt(
       contractName,
       await contract.getAddress(),
-      signers[0],
+      txSigner ?? signers[0],
     );
     const associateTx2 = await ethers.getContractAt(
       contractName,
       await contract.getAddress(),
-      signers[1],
+      txSigner ?? signers[1],
     );
 
     const associateTx3 = await ethers.getContractAt(
       contractName,
       await contract.getAddress(),
-      signers[2],
+      txSigner ?? signers[2],
     );
 
     await contract.associateTokenPublic(

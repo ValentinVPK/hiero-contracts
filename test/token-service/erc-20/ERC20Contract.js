@@ -13,17 +13,25 @@ describe('ERC20Contract Test Suite', function () {
   let tokenAddress;
   let erc20Contract;
   let signers;
+  let txSigner;
   const TOTAL_SUPPLY = 10000000000;
 
   before(async function () {
     signers = await ethers.getSigners();
     tokenCreateContract = await utils.deployTokenCreateContract();
     tokenTransferContract = await utils.deployTokenTransferContract();
+    erc20Contract = await utils.deployERC20Contract();
+    // Dedicated plain-ECDSA sender: v0.77 rejects EthereumTransactions from the
+    // re-keyed (KeyList) signer accounts. Fund it before the signers are re-keyed.
+    txSigner = await utils.createTxSigner(signers[0]);
     await hapi.updateAccountKeys([
       await tokenCreateContract.getAddress(),
       await tokenTransferContract.getAddress(),
     ]);
-    erc20Contract = await utils.deployERC20Contract();
+    // Route every contract call through txSigner; signers stay owners by address.
+    tokenCreateContract = tokenCreateContract.connect(txSigner);
+    tokenTransferContract = tokenTransferContract.connect(txSigner);
+    erc20Contract = erc20Contract.connect(txSigner);
     tokenAddress = await utils.createFungibleToken(
       tokenCreateContract,
       signers[0].address,
@@ -37,6 +45,7 @@ describe('ERC20Contract Test Suite', function () {
       tokenCreateContract,
       tokenAddress,
       Constants.Contract.TokenCreateContract,
+      txSigner,
     );
     await utils.grantTokenKyc(tokenCreateContract, tokenAddress);
   });
@@ -106,7 +115,7 @@ describe('ERC20Contract Test Suite', function () {
 
     try {
       const tx = await erc20Contract
-        .connect(signers[0])
+        .connect(txSigner)
         .transfer(
           tokenAddress,
           signers[1].address,
@@ -152,7 +161,7 @@ describe('ERC20Contract Test Suite', function () {
 
     try {
       const tx = await erc20Contract
-        .connect(signers[0])
+        .connect(txSigner)
         .delegateTransfer(
           tokenAddress,
           signers[1].address,
@@ -191,7 +200,7 @@ describe('ERC20Contract Test Suite', function () {
 
     try {
       const tx = await erc20Contract
-        .connect(signers[0])
+        .connect(txSigner)
         .approve(
           tokenAddress,
           signers[1].address,
@@ -225,7 +234,7 @@ describe('ERC20Contract Test Suite', function () {
 
     try {
       const tx = await erc20Contract
-        .connect(signers[0])
+        .connect(txSigner)
         .delegateApprove(
           tokenAddress,
           signers[1].address,
@@ -266,7 +275,7 @@ describe('ERC20Contract Test Suite', function () {
 
     try {
       const tx = await erc20Contract
-        .connect(signers[1])
+        .connect(txSigner)
         .delegateTransferFrom(
           tokenAddress,
           signers[0].address,

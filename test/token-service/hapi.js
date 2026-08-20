@@ -13,6 +13,7 @@ import {
   NftId,
   PrivateKey,
   TokenAssociateTransaction,
+  TokenCreateTransaction,
   TokenId,
   TokenUpdateTransaction,
 } from '@hashgraph/sdk';
@@ -169,6 +170,44 @@ class Hapi {
       await tx.freezeWith(this.client).sign(pkSigners[ownerIndex])
     ).execute(this.client);
     this.client.setOperator(config.operatorId, config.operatorKey);
+  }
+
+  // Create a fungible token via a native HAPI TokenCreateTransaction with a
+  // plain-ECDSA treasury. Used where the treasury/owner must itself SEND
+  // EthereumTransactions (direct ERC20 ops), so it cannot be a KeyList account
+  // created through a contract (v0.77 forbids KeyList senders). Returns the
+  // token's EVM address.
+  async createFungibleTokenViaSdk(
+    treasuryIndex = 0,
+    {
+      name = 'tokenName',
+      symbol = 'tokenSymbol',
+      decimals = 0,
+      initialSupply = 10000000000,
+    } = {},
+  ) {
+    const signers = await connection.ethers.getSigners();
+    const pkSigners = (await utils.getHardhatSignersPrivateKeys()).map((pk) =>
+      PrivateKey.fromStringECDSA(pk),
+    );
+    const treasuryId = await this.getAccountId(signers[treasuryIndex].address);
+    this.client.setOperator(treasuryId, pkSigners[treasuryIndex]);
+
+    const response = await (
+      await new TokenCreateTransaction()
+        .setTokenName(name)
+        .setTokenSymbol(symbol)
+        .setDecimals(decimals)
+        .setInitialSupply(initialSupply)
+        .setTreasuryAccountId(treasuryId)
+        .setAdminKey(pkSigners[treasuryIndex].publicKey)
+        .freezeWith(this.client)
+        .sign(pkSigners[treasuryIndex])
+    ).execute(this.client);
+    const receipt = await response.getReceipt(this.client);
+
+    this.client.setOperator(config.operatorId, config.operatorKey);
+    return `0x${receipt.tokenId.toSolidityAddress()}`;
   }
 
   async getAccountBalance(address) {
