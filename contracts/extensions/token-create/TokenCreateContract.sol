@@ -17,6 +17,8 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
     bool freezeDefaultStatus = false;
     bool finiteTotalSupplyType = true;
 
+    error TokenTransferFailed(int responseCode);
+
     event ResponseCode(int responseCode);
     event CreatedToken(address tokenAddress);
     event MintedToken(int64 newTotalSupply, int64[] serialNumbers);
@@ -81,11 +83,14 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
         return tokenAddress;
     }
 
-    function createFungibleTokenWithSECP256K1AdminKeyAssociateAndTransferToAddressPublic(address treasury, bytes memory adminKey, int64 amount) public payable {
-        address tokenAddress = this.createFungibleTokenWithSECP256K1AdminKeyPublic{value : msg.value}(treasury, adminKey);
+    function createFungibleTokenWithSECP256K1AdminKeyAssociateAndTransferToAddressPublic(address /* treasury */, bytes memory adminKey, int64 amount) public payable {
+        address tokenAddress = this.createFungibleTokenWithSECP256K1AdminKeyPublic{value : msg.value}(address(this), adminKey);
         this.associateTokenPublic(msg.sender, tokenAddress);
         this.grantTokenKycPublic(tokenAddress, msg.sender);
-        HederaTokenService.transferToken(tokenAddress, address(this), msg.sender, amount);
+        int responseCode = HederaTokenService.transferToken(tokenAddress, address(this), msg.sender, amount);
+        if (responseCode != HederaResponseCodes.SUCCESS) {
+            revert TokenTransferFailed(responseCode);
+        }
     }
 
     function createFungibleTokenWithSECP256K1AdminKeyWithoutKYCPublic(
@@ -321,7 +326,10 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
 
         emit MintedToken(newTotalSupply, serialNumbers);
 
-        HederaTokenService.transferNFT(token, address(this), msg.sender, serialNumbers[0]);
+        responseCode = HederaTokenService.transferNFT(token, address(this), msg.sender, serialNumbers[0]);
+        if (responseCode != HederaResponseCodes.SUCCESS) {
+            revert TokenTransferFailed(responseCode);
+        }
     }
 
     function associateTokensPublic(address account, address[] memory tokens) external returns (int256 responseCode) {
