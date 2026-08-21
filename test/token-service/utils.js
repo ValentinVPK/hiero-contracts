@@ -435,7 +435,10 @@ class Utils {
         value: ethers.parseEther(String(hbars)),
       })
     ).wait();
-    return wallet;
+    // One txSigner submits many sequential EthereumTransactions; NonceManager
+    // assigns nonces locally so rapid sends don't race the relay's lagging
+    // "pending" count (which surfaced as WRONG_NONCE).
+    return new ethers.NonceManager(wallet);
   }
 
   // Under the v0.77 security model a re-keyed (KeyList) account can no longer send
