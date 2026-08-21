@@ -73,6 +73,22 @@ describe('TokenCreateContract Test Suite', function () {
     await step('updateTokenKeys FT', () =>
       hapi.updateTokenKeys(tokenAddress, contractKeys),
     );
+    // The custom-fee create tests use the contract as fee collector denominated
+    // in tokenAddress, so the contract must be associated + KYC-granted on it.
+    await step('associate contract FT', () =>
+      tokenCreateContract.associateTokenPublic(
+        contractKeys[0],
+        tokenAddress,
+        Constants.GAS_LIMIT_1_000_000,
+      ),
+    );
+    await step('grantKyc contract FT', () =>
+      tokenCreateContract.grantTokenKycPublic(
+        tokenAddress,
+        contractKeys[0],
+        Constants.GAS_LIMIT_1_000_000,
+      ),
+    );
     nftTokenAddress = await step('createNonFungibleToken', () =>
       utils.createNonFungibleTokenWithSECP256K1AdminKey(
         tokenCreateContract,
@@ -238,7 +254,7 @@ describe('TokenCreateContract Test Suite', function () {
   it('should be able to execute createFungibleTokenWithCustomFees', async function () {
     const tx =
       await tokenCreateContract.createFungibleTokenWithCustomFeesPublic(
-        signers[0].address,
+        await tokenCreateContract.getAddress(),
         tokenAddress,
         {
           value: BigInt('20000000000000000000'),
@@ -257,7 +273,7 @@ describe('TokenCreateContract Test Suite', function () {
   it('should be able to execute createNonFungibleTokenWithCustomFees', async function () {
     const tx =
       await tokenCreateContract.createNonFungibleTokenWithCustomFeesPublic(
-        signers[0].address,
+        await tokenCreateContract.getAddress(),
         tokenAddress,
         {
           value: BigInt('20000000000000000000'),
@@ -276,7 +292,7 @@ describe('TokenCreateContract Test Suite', function () {
   it('should be able to execute mintToken', async function () {
     const nftAddress = await utils.createNonFungibleToken(
       tokenCreateContract,
-      signers[0].address,
+      await tokenCreateContract.getAddress(),
     );
     expect(nftAddress).to.exist;
     expectValidHash(nftAddress, 40);
