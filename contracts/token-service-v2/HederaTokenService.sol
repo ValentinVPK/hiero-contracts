@@ -473,7 +473,7 @@ abstract contract HederaTokenService {
     address from,
     address to,
     uint256 amount
-  ) external returns (int64 responseCode) {
+  ) internal returns (int64 responseCode) {
     (bool success, bytes memory result) = precompileAddress.call(
       abi.encodeWithSelector(
         IHederaTokenService.transferFrom.selector,
@@ -500,7 +500,7 @@ abstract contract HederaTokenService {
     address from,
     address to,
     uint256 serialNumber
-  ) external returns (int64 responseCode) {
+  ) internal returns (int64 responseCode) {
     (bool success, bytes memory result) = precompileAddress.call(
       abi.encodeWithSelector(
         IHederaTokenService.transferFromNFT.selector,
@@ -1119,7 +1119,7 @@ abstract contract HederaTokenService {
   function redirectForToken(
     address token,
     bytes memory encodedFunctionSelector
-  ) external returns (int64 responseCode, bytes memory response) {
+  ) internal returns (int64 responseCode, bytes memory response) {
     (bool success, bytes memory result) = precompileAddress.call(
       abi.encodeWithSelector(
         IHederaTokenService.redirectForToken.selector,
@@ -1259,7 +1259,7 @@ abstract contract HederaTokenService {
     address nftToken,
     int64[] memory serialNumbers,
     bytes memory metadata
-  ) external returns (int64 responseCode) {
+  ) internal returns (int64 responseCode) {
     (bool success, bytes memory result) = precompileAddress.call(
       abi.encodeWithSelector(
         IHederaTokenService.updateNFTsMetadata.selector,

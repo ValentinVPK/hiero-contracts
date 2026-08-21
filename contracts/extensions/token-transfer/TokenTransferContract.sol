@@ -54,7 +54,7 @@ contract TokenTransferContract is HederaTokenService {
     }
 
     function transferFromPublic(address token, address from, address to, uint256 amount) public returns (int64 responseCode) {
-        responseCode = this.transferFrom(token, from, to, amount);
+        responseCode = HederaTokenService.transferFrom(token, from, to, amount);
         emit ResponseCode(responseCode);
 
         if (responseCode != HederaResponseCodes.SUCCESS) {
@@ -63,7 +63,7 @@ contract TokenTransferContract is HederaTokenService {
     }
 
     function transferFromNFTPublic(address token, address from, address to, uint256 serialNumber) public returns (int64 responseCode) {
-        responseCode = this.transferFromNFT(token, from, to, serialNumber);
+        responseCode = HederaTokenService.transferFromNFT(token, from, to, serialNumber);
         emit ResponseCode(responseCode);
 
         if (responseCode != HederaResponseCodes.SUCCESS) {
