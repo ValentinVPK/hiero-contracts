@@ -461,25 +461,43 @@ class Utils {
       txSigner ?? signers[2],
     );
 
-    await contract.associateTokenPublic(
-      await contract.getAddress(),
-      tokenAddress,
-      Constants.GAS_LIMIT_1_000_000,
+    // [diag] wrap each associate so a 400 logs the relay's real reason + which target
+    const diag = async (label, fn) => {
+      try {
+        return await fn();
+      } catch (err) {
+        Utils.logRelayError(label, err);
+        throw err;
+      }
+    };
+    const contractAddress = await contract.getAddress();
+    await diag('associate:contract-self', () =>
+      contract.associateTokenPublic(
+        contractAddress,
+        tokenAddress,
+        Constants.GAS_LIMIT_1_000_000,
+      ),
     );
-    await associateTx1.associateTokenPublic(
-      signers[0].address,
-      tokenAddress,
-      Constants.GAS_LIMIT_1_000_000,
+    await diag('associate:signer0', () =>
+      associateTx1.associateTokenPublic(
+        signers[0].address,
+        tokenAddress,
+        Constants.GAS_LIMIT_1_000_000,
+      ),
     );
-    await associateTx2.associateTokenPublic(
-      signers[1].address,
-      tokenAddress,
-      Constants.GAS_LIMIT_1_000_000,
+    await diag('associate:signer1', () =>
+      associateTx2.associateTokenPublic(
+        signers[1].address,
+        tokenAddress,
+        Constants.GAS_LIMIT_1_000_000,
+      ),
     );
-    await associateTx3.associateTokenPublic(
-      signers[2].address,
-      tokenAddress,
-      Constants.GAS_LIMIT_1_000_000,
+    await diag('associate:signer2', () =>
+      associateTx3.associateTokenPublic(
+        signers[2].address,
+        tokenAddress,
+        Constants.GAS_LIMIT_1_000_000,
+      ),
     );
   }
 
@@ -491,6 +509,26 @@ class Utils {
     );
     await contract.grantTokenKycPublic(tokenAddress, signers[0].address);
     await contract.grantTokenKycPublic(tokenAddress, signers[1].address);
+  }
+
+  // [diag] Walk the error's cause chain and surface the relay's JSON-RPC body /
+  // status so a bare "400 Bad Request" reveals the real consensus reason.
+  static logRelayError(label, err) {
+    let e = err;
+    for (let depth = 0; e && depth < 8; depth++, e = e.cause) {
+      const parts = [`msg=${e.message ?? ''}`];
+      if (e.statusCode !== undefined) parts.push(`status=${e.statusCode}`);
+      if (e.code !== undefined) parts.push(`code=${e.code}`);
+      for (const key of ['body', 'data', 'info', 'error']) {
+        if (e[key] != null) {
+          const val = e[key];
+          parts.push(
+            `${key}=${typeof val === 'string' ? val : JSON.stringify(val)}`,
+          );
+        }
+      }
+      console.log(`[diag] ${label} cause[${depth}]: ${parts.join(' | ')}`);
+    }
   }
 
   static async expectToFail(transaction, code = null) {

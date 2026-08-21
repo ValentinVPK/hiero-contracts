@@ -20,8 +20,9 @@ describe('IERC20 Test Suite', function () {
 
   before(async function () {
     this.timeout(180000); // [diag] bound the hook so a hang flushes instead of eating the 45m job cap
-    console.log('[diag] ierc20: getSigners + deploy');
+    console.log('[diag] ierc20: getSigners');
     signers = await ethers.getSigners();
+    console.log('[diag] ierc20: deployTokenCreateContract');
     tokenCreateContract = await utils.deployTokenCreateContract();
     // v0.77: these are direct EOA ERC20 calls — signer0/signer1 own and move
     // their OWN tokens, so they must stay plain-ECDSA senders (no
@@ -39,11 +40,16 @@ describe('IERC20 Test Suite', function () {
       tokenAddress,
     );
     console.log('[diag] ierc20: contract self-associate');
-    await tokenCreateContract.associateTokenPublic(
-      await tokenCreateContract.getAddress(),
-      tokenAddress,
-      Constants.GAS_LIMIT_1_000_000,
-    );
+    try {
+      await tokenCreateContract.associateTokenPublic(
+        await tokenCreateContract.getAddress(),
+        tokenAddress,
+        Constants.GAS_LIMIT_1_000_000,
+      );
+    } catch (err) {
+      utils.logRelayError('ierc20:self-associate', err);
+      throw err;
+    }
     console.log('[diag] ierc20: getContractAt');
     IERC20 = await ethers.getContractAt(
       Constants.Contract.ERC20Mock,
