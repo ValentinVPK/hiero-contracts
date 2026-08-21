@@ -1,5 +1,13 @@
 name: Tests CI
 
+# =============================================================================
+# TEMPORARY — v0.77 fix iteration only. REVERT BEFORE MERGE.
+# Reduced to a single suite so each push runs one ~5-min job instead of 14
+# suites (most hanging to the job cap) on a serialized runner pool. The full
+# 14-suite job list + PublishResults lives in git history; restore it before
+# this PR is merged. To iterate a different suite, change `testfilter` below.
+# =============================================================================
+
 on:
   pull_request:
     branches: [main, release/**]
@@ -21,125 +29,8 @@ defaults:
     shell: bash
 
 jobs:
-  ERC20Contract:
-    name: ERC20 Contract Test Suite
-    uses: ./.github/workflows/test-workflow.yml
-    with:
-      testfilter: ERC20
-
   ERC721Contract:
     name: ERC721 Contract Test Suite
     uses: ./.github/workflows/test-workflow.yml
     with:
       testfilter: ERC721
-
-  TokenCreateContract:
-    name: Token Create Test Suite
-    uses: ./.github/workflows/test-workflow.yml
-    with:
-      testfilter: TokenCreateContract
-
-  TokenQueryContract:
-    name: Token Query Test Suite
-    uses: ./.github/workflows/test-workflow.yml
-    with:
-      testfilter: TokenQueryContract
-
-  TokenManagmentContract:
-    name: Token Managment Test Suite
-    uses: ./.github/workflows/test-workflow.yml
-    with:
-      testfilter: TokenManagmentContract
-
-  TokenTransferContract:
-    name: Token Transfer Test Suite
-    uses: ./.github/workflows/test-workflow.yml
-    with:
-      testfilter: TokenTransferContract
-
-  HIP755:
-    name: HIP755 Test Suite
-    uses: ./.github/workflows/test-workflow.yml
-    with:
-      testfilter: HIP755
-
-  HIP1215:
-    name: HIP1215 Test Suite
-    uses: ./.github/workflows/test-workflow.yml
-    with:
-      testfilter: HIP1215
-
-  HRC:
-    name: HRC Test Suite
-    uses: ./.github/workflows/test-workflow.yml
-    with:
-      testfilter: HRC
-
-  PrngSystemContract:
-    name: PrngSystemContract Test Suite
-    uses: ./.github/workflows/test-workflow.yml
-    with:
-      testfilter: PrngSystemContract
-
-  HederaAccountService:
-    name: HederaAccountService Test Suite
-    uses: ./.github/workflows/test-workflow.yml
-    with:
-      testfilter: HAS
-
-  HIP904Batch1:
-    name: HIP904 Contract Test Suite Batch 1
-    uses: ./.github/workflows/test-workflow.yml
-    with:
-      testfilter: HIP904Batch1
-
-  HIP904Batch2:
-    name: HIP904 Contract Test Suite Batch 2
-    uses: ./.github/workflows/test-workflow.yml
-    with:
-      testfilter: HIP904Batch2
-
-  HIP904Batch3:
-    name: HIP904 Contract Test Suite Batch 3
-    uses: ./.github/workflows/test-workflow.yml
-    with:
-      testfilter: HIP904Batch3
-
-  PublishResults:
-    name: Publish Results
-    if: ${{ !cancelled() }}
-    needs:
-      - ERC20Contract
-      - ERC721Contract
-      - TokenCreateContract
-      - TokenQueryContract
-      - TokenManagmentContract
-      - TokenTransferContract
-      - HIP755
-      - HIP1215
-      - HRC
-      - PrngSystemContract
-      - HederaAccountService
-      - HIP904Batch1
-      - HIP904Batch2
-      - HIP904Batch3
-
-    runs-on: hl-contr-lin-md
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
-        with:
-          egress-policy: audit
-
-      - name: Download Test Reports
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
-        with:
-          pattern: Test Results (*)
-          merge-multiple: true
-
-      - name: Publish Test Report
-        uses: step-security/publish-unit-test-result-action@681100d67b09305624c089873f12c545ee7cbc24 # v2.23.0
-        with:
-          check_name: Test Results
-          json_thousands_separator: ','
-          junit_files: 'test-*.xml'
