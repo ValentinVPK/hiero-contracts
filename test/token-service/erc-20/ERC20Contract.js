@@ -11,26 +11,15 @@ describe('ERC20Contract Test Suite', function () {
   let tokenAddress;
   let erc20Contract;
   let signers;
-  let txSigner;
   const TOTAL_SUPPLY = 10000000000;
 
   before(async function () {
-    this.timeout(180000); // [diag] bound the hook so a hang flushes instead of eating the 45m job cap
-    console.log('[diag] erc20c: getSigners');
     signers = await ethers.getSigners();
-    console.log('[diag] erc20c: deploy erc20Contract');
     erc20Contract = await utils.deployERC20Contract();
-    // Relay model: one plain-ECDSA txSigner signs every contract call and no
-    // account is ever re-keyed. v0.77 rejects EthereumTransactions from KeyList
-    // accounts, so the signers stay untouched and act only as subjects.
-    console.log('[diag] erc20c: createTxSigner');
-    txSigner = await utils.createTxSigner(signers[0]);
-    erc20Contract = erc20Contract.connect(txSigner);
-    // Token is created natively by its treasury (signer0, plain ECDSA) — no
-    // contract-mediated create, so no account authorization is required.
-    console.log('[diag] erc20c: createFungibleTokenViaSdk');
+    // No account is re-keyed, so signer0 stays a plain-ECDSA sender and signs
+    // every call. The token is created natively by its treasury (signer0), so
+    // no contract-mediated create and no account authorization is required.
     tokenAddress = await hapi.createFungibleTokenViaSdk(0);
-    console.log('[diag] erc20c: before DONE ' + tokenAddress);
   });
 
   after(function () {
