@@ -8,6 +8,7 @@ import hapi from '../hapi';
 import utils from '../utils';
 
 describe('ERC20Contract Test Suite', function () {
+  let tokenCreateContract;
   let tokenAddress;
   let erc20Contract;
   let signers;
@@ -15,11 +16,16 @@ describe('ERC20Contract Test Suite', function () {
 
   before(async function () {
     signers = await ethers.getSigners();
+    tokenCreateContract = await utils.deployTokenCreateContract();
     erc20Contract = await utils.deployERC20Contract();
-    // No account is re-keyed, so signer0 stays a plain-ECDSA sender and signs
-    // every call. The token is created natively by its treasury (signer0), so
-    // no contract-mediated create and no account authorization is required.
-    tokenAddress = await hapi.createFungibleTokenViaSdk(0);
+    // Contract-controlled token: the creating contract is its own treasury, so
+    // all keys inherit the contract and no EOA is re-keyed (relay model). A
+    // contract can read an HTS token's ERC20 facade only when the token was
+    // created through the precompile like this.
+    tokenAddress = await utils.createFungibleToken(
+      tokenCreateContract,
+      await tokenCreateContract.getAddress(),
+    );
   });
 
   after(function () {
@@ -47,9 +53,9 @@ describe('ERC20Contract Test Suite', function () {
   });
 
   it('should be able to get token balance of any account', async function () {
-    const contractOwnerBalance = await erc20Contract.balanceOf(
+    const treasuryBalance = await erc20Contract.balanceOf(
       tokenAddress,
-      await erc20Contract.getAddress(),
+      await tokenCreateContract.getAddress(),
     );
     const wallet1Balance = await erc20Contract.balanceOf(
       tokenAddress,
@@ -60,10 +66,10 @@ describe('ERC20Contract Test Suite', function () {
       signers[1].address,
     );
 
-    expect(contractOwnerBalance).to.exist;
-    expect(contractOwnerBalance).to.eq(0);
+    expect(treasuryBalance).to.exist;
+    expect(treasuryBalance).to.eq(TOTAL_SUPPLY);
     expect(wallet1Balance).to.exist;
-    expect(wallet1Balance).to.eq(TOTAL_SUPPLY);
+    expect(wallet1Balance).to.eq(0);
     expect(wallet2Balance).to.exist;
     expect(wallet2Balance).to.eq(0);
   });
