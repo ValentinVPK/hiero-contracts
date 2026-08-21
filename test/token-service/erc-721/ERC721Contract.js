@@ -35,24 +35,34 @@ describe('ERC721Contract Test Suite', function () {
     erc721Contract = await step('deployERC721Contract', () =>
       utils.deployERC721Contract(),
     );
+    const tokenCreateAddr = await tokenCreateContract.getAddress();
     const erc721Addr = await erc721Contract.getAddress();
     // Relay model: no account re-keying. The token is precompile-created (so the
-    // contract can read its ERC721 facade) with firstWallet — the tx sender — as
-    // treasury, which its own signature authorizes, and the NFT is minted
-    // straight to it. So no re-key and no separate transfer to seed ownership.
+    // contract can read its ERC721 facade) with the CONTRACT as treasury — a
+    // contract authorizes itself, whereas an EOA treasury would need re-keying.
     tokenAddress = await step('createNonFungibleToken', () =>
-      utils.createNonFungibleToken(tokenCreateContract, firstWallet.address),
+      utils.createNonFungibleToken(tokenCreateContract, tokenCreateAddr),
     );
-    mintedTokenSerialNumber = await step('mintNFT', () =>
-      utils.mintNFT(tokenCreateContract, tokenAddress),
+    // Recipients must be associated + KYC-granted. Signers self-associate with
+    // their own key; the contract holds the inherited KYC key so it grants KYC
+    // without the target signing.
+    await step('associate firstWallet', () =>
+      hapi.associateWithSigner(
+        utils.getHardhatSignerPrivateKeyByIndex(0),
+        tokenAddress,
+      ),
     );
-    // Receivers must be associated + KYC-granted (treasury firstWallet is
-    // exempt). secondWallet self-associates with its own key; the contract holds
-    // the inherited KYC key so it grants KYC without the target signing.
     await step('associate secondWallet', () =>
       hapi.associateWithSigner(
         utils.getHardhatSignerPrivateKeyByIndex(1),
         tokenAddress,
+      ),
+    );
+    await step('grantKyc firstWallet', () =>
+      tokenCreateContract.grantTokenKycPublic(
+        tokenAddress,
+        firstWallet.address,
+        Constants.GAS_LIMIT_1_000_000,
       ),
     );
     await step('grantKyc secondWallet', () =>
@@ -75,6 +85,11 @@ describe('ERC721Contract Test Suite', function () {
         erc721Addr,
         Constants.GAS_LIMIT_1_000_000,
       ),
+    );
+    // Mint straight to firstWallet: the treasury contract mints then transfers
+    // the NFT to msg.sender (firstWallet, the tx sender), authorized as owner.
+    mintedTokenSerialNumber = await step('mintNFTToAddress firstWallet', () =>
+      utils.mintNFTToAddress(tokenCreateContract, tokenAddress),
     );
     nftInitialOwnerAddress = firstWallet.address;
     console.log('[diag] erc721c: before DONE');
@@ -237,10 +252,12 @@ describe('ERC721Contract Test Suite', function () {
     let serialNumber;
 
     before(async function () {
-      // Minted straight to the treasury (firstWallet), so no transfer needed.
-      serialNumber = await utils.mintNFT(tokenCreateContract, tokenAddress, [
-        '0x02',
-      ]);
+      // Mint straight to firstWallet (the tx sender), so no separate transfer.
+      serialNumber = await utils.mintNFTToAddress(
+        tokenCreateContract,
+        tokenAddress,
+        ['0x02'],
+      );
     });
 
     it('should NOT be able to execute approve', async function () {
