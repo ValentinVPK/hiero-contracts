@@ -17,13 +17,18 @@ describe('ERC20Contract Test Suite', function () {
   const TOTAL_SUPPLY = 10000000000;
 
   before(async function () {
+    this.timeout(180000); // [diag] bound the hook so a hang flushes instead of eating the 45m job cap
+    console.log('[diag] erc20c: getSigners');
     signers = await ethers.getSigners();
+    console.log('[diag] erc20c: deploy contracts');
     tokenCreateContract = await utils.deployTokenCreateContract();
     tokenTransferContract = await utils.deployTokenTransferContract();
     erc20Contract = await utils.deployERC20Contract();
     // Dedicated plain-ECDSA sender: v0.77 rejects EthereumTransactions from the
     // re-keyed (KeyList) signer accounts. Fund it before the signers are re-keyed.
+    console.log('[diag] erc20c: createTxSigner');
     txSigner = await utils.createTxSigner(signers[0]);
+    console.log('[diag] erc20c: updateAccountKeys');
     await hapi.updateAccountKeys([
       await tokenCreateContract.getAddress(),
       await tokenTransferContract.getAddress(),
@@ -32,22 +37,27 @@ describe('ERC20Contract Test Suite', function () {
     tokenCreateContract = tokenCreateContract.connect(txSigner);
     tokenTransferContract = tokenTransferContract.connect(txSigner);
     erc20Contract = erc20Contract.connect(txSigner);
+    console.log('[diag] erc20c: createFungibleToken');
     tokenAddress = await utils.createFungibleToken(
       tokenCreateContract,
       signers[0].address,
     );
 
+    console.log('[diag] erc20c: updateTokenKeys');
     await hapi.updateTokenKeys(tokenAddress, [
       await tokenCreateContract.getAddress(),
       await tokenTransferContract.getAddress(),
     ]);
+    console.log('[diag] erc20c: associateToken');
     await utils.associateToken(
       tokenCreateContract,
       tokenAddress,
       Constants.Contract.TokenCreateContract,
       txSigner,
     );
+    console.log('[diag] erc20c: grantTokenKyc');
     await utils.grantTokenKyc(tokenCreateContract, tokenAddress);
+    console.log('[diag] erc20c: before DONE');
   });
 
   after(function () {
