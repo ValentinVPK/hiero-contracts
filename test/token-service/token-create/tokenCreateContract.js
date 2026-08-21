@@ -313,6 +313,7 @@ describe('TokenCreateContract Test Suite', function () {
   });
 
   describe('Hapi vs Ethereum token create test', function () {
+    this.timeout(180000); // [diag] bound tests so a hang flushes instead of eating the job cap
     // @notice: The param values below are preset to match the values preset in the
     // `createFungibleTokenWithSECP256K1AdminKeyPublic()` method in the TokenCreateContract.sol
     const tokenName = 'tokenName';
@@ -326,13 +327,11 @@ describe('TokenCreateContract Test Suite', function () {
     let signers;
 
     before(async function () {
+      // Relay model: no account re-keying — signer0 stays a plain-ECDSA sender
+      // so createTokenviaSystemContract's EthereumTransaction is accepted.
       signers = await ethers.getSigners();
       tokenCreateContract = await utils.deployTokenCreateContract();
       tokenQueryContract = await utils.deployTokenQueryContract();
-      await hapi.updateAccountKeys([
-        await tokenCreateContract.getAddress(),
-        await tokenQueryContract.getAddress(),
-      ]);
     });
 
     async function createTokenviaHapi() {
