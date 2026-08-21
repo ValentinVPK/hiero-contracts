@@ -392,7 +392,7 @@ class Utils {
   static async getSerialNumbers(mintNftTx) {
     const tokenAddressReceipt = await mintNftTx.wait();
     const { serialNumbers } = tokenAddressReceipt.logs.filter(
-      (e) => e.fragment.name === Constants.Events.MintedToken,
+      (e) => e.fragment?.name === Constants.Events.MintedToken,
     )[0].args;
 
     return parseInt(serialNumbers);
