@@ -29,8 +29,8 @@ defaults:
     shell: bash
 
 jobs:
-  TokenCreateContract:
-    name: Token Create Test Suite
+  TokenTransferContract:
+    name: Token Transfer Test Suite
     uses: ./.github/workflows/test-workflow.yml
     with:
-      testfilter: TokenCreateContract
+      testfilter: TokenTransferContract
