@@ -26,6 +26,7 @@ describe('TokenCreateContract Test Suite', function () {
   let erc20Contract;
   let tokenAddress;
   let nftTokenAddress;
+  let keyListAccountAddress;
   let signers;
 
   before(async function () {
@@ -124,6 +125,21 @@ describe('TokenCreateContract Test Suite', function () {
     await step('mintNFT', () =>
       utils.mintNFT(tokenCreateContract, nftTokenAddress),
     );
+    // A KeyList account keyed to the contracts is the (dis)association subject
+    // for the dissociate tests: the contracts can act on it, and it never sends
+    // a transaction, so no EOA needs re-keying. Start it associated so it can be
+    // dissociated then re-associated.
+    const keyListAccount = await step('createKeyListAccount', () =>
+      hapi.createAccountWithContractIdKey(contractKeys),
+    );
+    keyListAccountAddress = keyListAccount.address;
+    await step('associate keyListAccount', () =>
+      tokenCreateContract.associateTokensPublic(
+        keyListAccountAddress,
+        [tokenAddress],
+        Constants.GAS_LIMIT_1_000_000,
+      ),
+    );
     console.log('[diag] tokencreate: before DONE');
   });
 
@@ -161,7 +177,7 @@ describe('TokenCreateContract Test Suite', function () {
 
     const txDisassociate =
       await tokenManagmentContractWallet2.dissociateTokensPublic(
-        signers[1].address,
+        keyListAccountAddress,
         [tokenAddress],
         Constants.GAS_LIMIT_1_000_000,
       );
@@ -173,7 +189,7 @@ describe('TokenCreateContract Test Suite', function () {
     ).to.equal(22);
 
     const txAssociate = await tokenCreateContractWallet2.associateTokensPublic(
-      signers[1].address,
+      keyListAccountAddress,
       [tokenAddress],
       Constants.GAS_LIMIT_1_000_000,
     );
@@ -193,7 +209,7 @@ describe('TokenCreateContract Test Suite', function () {
 
     const txDisassociate =
       await tokenManagmentContractWallet2.dissociateTokenPublic(
-        signers[1].address,
+        keyListAccountAddress,
         tokenAddress,
         Constants.GAS_LIMIT_1_000_000,
       );
@@ -205,7 +221,7 @@ describe('TokenCreateContract Test Suite', function () {
     ).to.equal(22);
 
     const txAssociate = await tokenCreateContractWallet2.associateTokenPublic(
-      signers[1].address,
+      keyListAccountAddress,
       tokenAddress,
       Constants.GAS_LIMIT_1_000_000,
     );

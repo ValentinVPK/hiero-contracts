@@ -3,6 +3,7 @@
 import {
   AccountAllowanceApproveTransaction,
   AccountBalanceQuery,
+  AccountCreateTransaction,
   AccountId,
   AccountInfoQuery,
   AccountUpdateTransaction,
@@ -34,6 +35,33 @@ class Hapi {
       .setMirrorNetwork(config.mirrorNode)
       .setOperator(config.operatorId, config.operatorKey);
     return this._client;
+  }
+
+  // Create a fresh account whose key is a threshold-1 KeyList of a generated
+  // ECDSA key plus the given contract ids. A contract can then act on this
+  // account (associate/dissociate/transfer on its behalf) while the account
+  // itself never sends a transaction — so it stays a valid subject under v0.77
+  // without re-keying an EOA sender. Returns its long-zero EVM address.
+  async createAccountWithContractIdKey(contractAddresses, initialHbar = 20) {
+    const accountKey = PrivateKey.generateECDSA();
+    const keyList = new KeyList(
+      [
+        accountKey.publicKey,
+        ...contractAddresses.map((address) =>
+          ContractId.fromEvmAddress(0, 0, address),
+        ),
+      ],
+      1,
+    );
+    const response = await new AccountCreateTransaction()
+      .setKey(keyList)
+      .setInitialBalance(new Hbar(initialHbar))
+      .execute(this.client);
+    const receipt = await response.getReceipt(this.client);
+    return {
+      accountId: receipt.accountId.toString(),
+      address: `0x${receipt.accountId.toSolidityAddress()}`,
+    };
   }
 
   async updateAccountKeys(contractAddresses, ecdsaPrivateKeys = []) {
