@@ -29,8 +29,8 @@ defaults:
     shell: bash
 
 jobs:
-  TokenQueryContract:
-    name: Token Query Test Suite
+  TokenCreateContract:
+    name: Token Create Test Suite
     uses: ./.github/workflows/test-workflow.yml
     with:
-      testfilter: TokenQueryContract
+      testfilter: TokenCreateContract

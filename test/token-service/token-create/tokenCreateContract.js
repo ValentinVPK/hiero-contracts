@@ -29,52 +29,86 @@ describe('TokenCreateContract Test Suite', function () {
   let signers;
 
   before(async function () {
+    this.timeout(180000); // [diag] bound the hook so a hang flushes instead of eating the 45m job cap
+    const step = async (label, fn) => {
+      console.log('[diag] tokencreate: ' + label);
+      try {
+        return await fn();
+      } catch (err) {
+        utils.logRelayError('tokencreate:' + label, err);
+        throw err;
+      }
+    };
     signers = await ethers.getSigners();
-    tokenCreateContract = await utils.deployTokenCreateContract();
-    tokenTransferContract = await utils.deployTokenTransferContract();
-    tokenManagmentContract = await utils.deployTokenManagementContract();
-    await hapi.updateAccountKeys([
+    tokenCreateContract = await step('deployTokenCreate', () =>
+      utils.deployTokenCreateContract(),
+    );
+    tokenTransferContract = await step('deployTokenTransfer', () =>
+      utils.deployTokenTransferContract(),
+    );
+    tokenManagmentContract = await step('deployTokenManagement', () =>
+      utils.deployTokenManagementContract(),
+    );
+    erc20Contract = await step('deployERC20', () =>
+      utils.deployERC20Contract(),
+    );
+    await step('deployERC721', () => utils.deployERC721Contract());
+    const contractKeys = [
       await tokenCreateContract.getAddress(),
       await tokenTransferContract.getAddress(),
       await tokenManagmentContract.getAddress(),
-    ]);
-    erc20Contract = await utils.deployERC20Contract();
-    await utils.deployERC721Contract();
-    tokenAddress = await utils.createFungibleTokenWithSECP256K1AdminKey(
-      tokenCreateContract,
-      signers[0].address,
-      utils.getSignerCompressedPublicKey(),
+    ];
+    const signer1Pk = utils.getHardhatSignerPrivateKeyByIndex(1);
+    // Relay model: no account re-keying. Tokens are created with signer0's own
+    // ECDSA admin key and signer0 as treasury — signer0 signs the create, so no
+    // re-key is needed — then updateTokenKeys hands the operational keys to the
+    // contracts. signer0 stays a plain-ECDSA sender and holder.
+    tokenAddress = await step('createFungibleToken', () =>
+      utils.createFungibleTokenWithSECP256K1AdminKey(
+        tokenCreateContract,
+        signers[0].address,
+        utils.getSignerCompressedPublicKey(),
+      ),
     );
-    await hapi.updateTokenKeys(tokenAddress, [
-      await tokenCreateContract.getAddress(),
-      await tokenTransferContract.getAddress(),
-      await tokenManagmentContract.getAddress(),
-    ]);
-    nftTokenAddress = await utils.createNonFungibleToken(
-      tokenCreateContract,
-      signers[0].address,
+    await step('updateTokenKeys FT', () =>
+      hapi.updateTokenKeys(tokenAddress, contractKeys),
     );
-    await hapi.updateTokenKeys(nftTokenAddress, [
-      await tokenCreateContract.getAddress(),
-      await tokenTransferContract.getAddress(),
-      await tokenManagmentContract.getAddress(),
-    ]);
-
-    await utils.associateToken(
-      tokenCreateContract,
-      tokenAddress,
-      Constants.Contract.TokenCreateContract,
+    nftTokenAddress = await step('createNonFungibleToken', () =>
+      utils.createNonFungibleTokenWithSECP256K1AdminKey(
+        tokenCreateContract,
+        signers[0].address,
+        utils.getSignerCompressedPublicKey(),
+      ),
     );
-    await utils.grantTokenKyc(tokenCreateContract, tokenAddress); ///!
-
-    await utils.associateToken(
-      tokenCreateContract,
-      nftTokenAddress,
-      Constants.Contract.TokenCreateContract,
+    await step('updateTokenKeys NFT', () =>
+      hapi.updateTokenKeys(nftTokenAddress, contractKeys),
     );
-
-    await utils.grantTokenKyc(tokenCreateContract, nftTokenAddress);
-    await utils.mintNFT(tokenCreateContract, nftTokenAddress);
+    // signer1 is a non-treasury holder used by the dissociate/KYC tests: it
+    // self-associates with its own key, then the contract grants it KYC.
+    await step('associate signer1 FT', () =>
+      hapi.associateWithSigner(signer1Pk, tokenAddress),
+    );
+    await step('associate signer1 NFT', () =>
+      hapi.associateWithSigner(signer1Pk, nftTokenAddress),
+    );
+    await step('grantKyc signer1 FT', () =>
+      tokenCreateContract.grantTokenKycPublic(
+        tokenAddress,
+        signers[1].address,
+        Constants.GAS_LIMIT_1_000_000,
+      ),
+    );
+    await step('grantKyc signer1 NFT', () =>
+      tokenCreateContract.grantTokenKycPublic(
+        nftTokenAddress,
+        signers[1].address,
+        Constants.GAS_LIMIT_1_000_000,
+      ),
+    );
+    await step('mintNFT', () =>
+      utils.mintNFT(tokenCreateContract, nftTokenAddress),
+    );
+    console.log('[diag] tokencreate: before DONE');
   });
 
   after(function () {
