@@ -19,50 +19,57 @@ describe('TokenQueryContract Test Suite', function () {
   let signers;
 
   before(async function () {
+    this.timeout(180000); // [diag] bound the hook so a hang flushes instead of eating the 45m job cap
+    const step = async (label, fn) => {
+      console.log('[diag] tokenquery: ' + label);
+      try {
+        return await fn();
+      } catch (err) {
+        utils.logRelayError('tokenquery:' + label, err);
+        throw err;
+      }
+    };
     signers = await ethers.getSigners();
-    tokenCreateContract = await utils.deployTokenCreateContract();
-    tokenQueryContract = await utils.deployTokenQueryContract();
-    await hapi.updateAccountKeys([
-      await tokenCreateContract.getAddress(),
-      await tokenQueryContract.getAddress(),
-    ]);
-
-    tokenAddress = await utils.createFungibleToken(
-      tokenCreateContract,
-      await tokenCreateContract.getAddress(),
+    tokenCreateContract = await step('deployTokenCreateContract', () =>
+      utils.deployTokenCreateContract(),
     );
-    await hapi.updateTokenKeys(tokenAddress, [
-      await tokenCreateContract.getAddress(),
-      await tokenQueryContract.getAddress(),
-    ]);
-    tokenWithCustomFeesAddress = await utils.createFungibleTokenWithCustomFees(
-      tokenCreateContract,
-      tokenAddress,
+    tokenQueryContract = await step('deployTokenQueryContract', () =>
+      utils.deployTokenQueryContract(),
     );
-    nftTokenAddress = await utils.createNonFungibleToken(
-      tokenCreateContract,
-      await tokenCreateContract.getAddress(),
+    const tokenCreateAddr = await tokenCreateContract.getAddress();
+    const tokenQueryAddr = await tokenQueryContract.getAddress();
+    // Relay model: no account re-keying. All tokens are contract-treasury
+    // precompile tokens, so the contract is the auto-associated holder the
+    // queries run against; signers are only referenced as addresses.
+    tokenAddress = await step('createFungibleToken', () =>
+      utils.createFungibleToken(tokenCreateContract, tokenCreateAddr),
     );
-    mintedTokenSerialNumber = await utils.mintNFTToAddress(
-      tokenCreateContract,
-      nftTokenAddress,
+    await step('updateTokenKeys', () =>
+      hapi.updateTokenKeys(tokenAddress, [tokenCreateAddr, tokenQueryAddr]),
     );
-
-    await utils.associateToken(
-      tokenCreateContract,
-      tokenAddress,
-      Constants.Contract.TokenCreateContract,
+    tokenWithCustomFeesAddress = await step(
+      'createFungibleTokenWithCustomFees',
+      () =>
+        utils.createFungibleTokenWithCustomFees(
+          tokenCreateContract,
+          tokenAddress,
+        ),
     );
-
-    await utils.grantTokenKyc(tokenCreateContract, tokenAddress);
-
-    await utils.associateToken(
-      tokenCreateContract,
-      nftTokenAddress,
-      Constants.Contract.TokenCreateContract,
+    nftTokenAddress = await step('createNonFungibleToken', () =>
+      utils.createNonFungibleToken(tokenCreateContract, tokenCreateAddr),
     );
-
-    await utils.grantTokenKyc(tokenCreateContract, nftTokenAddress);
+    mintedTokenSerialNumber = await step('mintNFT', () =>
+      utils.mintNFT(tokenCreateContract, nftTokenAddress),
+    );
+    // Grant the treasury contract KYC so the isKyc query returns true.
+    await step('grantKyc contract', () =>
+      tokenCreateContract.grantTokenKycPublic(
+        tokenAddress,
+        tokenCreateAddr,
+        Constants.GAS_LIMIT_1_000_000,
+      ),
+    );
+    console.log('[diag] tokenquery: before DONE');
   });
 
   after(function () {

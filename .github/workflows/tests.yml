@@ -29,8 +29,8 @@ defaults:
     shell: bash
 
 jobs:
-  ERC721Contract:
-    name: ERC721 Contract Test Suite
+  TokenQueryContract:
+    name: Token Query Test Suite
     uses: ./.github/workflows/test-workflow.yml
     with:
-      testfilter: ERC721
+      testfilter: TokenQueryContract
