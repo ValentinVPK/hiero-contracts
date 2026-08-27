@@ -3,9 +3,10 @@ name: Tests CI
 # =============================================================================
 # TEMPORARY — v0.77 fix iteration only. REVERT BEFORE MERGE.
 # Reduced to a single suite so each push runs one ~5-min job instead of 14
-# suites (most hanging to the job cap) on a serialized runner pool. The full
-# 14-suite job list + PublishResults lives in git history; restore it before
-# this PR is merged. To iterate a different suite, change `testfilter` below.
+# suites (most hanging to the job cap) on a serialized runner pool. To iterate a
+# different suite, change `testfilter` below. To restore the full 14-job matrix
+# + PublishResults before this PR is merged:
+#   git checkout origin/main -- .github/workflows/tests.yml
 # =============================================================================
 
 on:
