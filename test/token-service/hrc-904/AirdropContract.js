@@ -74,6 +74,29 @@ describe('HIP904Batch1 AirdropContract Test Suite', function () {
         Constants.GAS_LIMIT_1_000_000,
       )
     ).wait();
+
+    // The receivers used to be associated to each token through the contract,
+    // which only worked while their keys included it. Instead let them accept
+    // any token automatically — a call each account makes on itself, so no key
+    // relationship is needed — otherwise every airdrop below lands as a pending
+    // airdrop and reverts for want of the pending-airdrop fee. The tests that
+    // want a pending airdrop use their own fresh account and opt back out.
+    const IHRC904AccountFacade = new ethers.Interface(
+      (await hre.artifacts.readArtifact('IHRC904AccountFacade')).abi,
+    );
+    for (const signer of signers.slice(1, 3)) {
+      const accountFacade = new ethers.Contract(
+        signer.address,
+        IHRC904AccountFacade,
+        signer,
+      );
+      await (
+        await accountFacade.setUnlimitedAutomaticAssociations(
+          true,
+          Constants.GAS_LIMIT_2_000_000,
+        )
+      ).wait();
+    }
   });
 
   after(function () {
