@@ -653,15 +653,64 @@ class Utils {
    * @param {string} txHash - The transaction hash to query.
    * @returns {Promise<string>} - The response code as a string.
    */
-  static async getHTSResponseCode(txHash) {
+  /**
+   * Reads a system contract's response code out of a transaction's mirror node
+   * action tree.
+   *
+   * The action addressed to the system contract is identified by entity id
+   * (`recipient`) OR by EVM address (`to`) — the entity-id form alone stopped
+   * matching on consensus v0.77 / mirror v0.161. If neither shape is present,
+   * fall back to the innermost action, which is where a facade/redirect call
+   * leaves its response code, and say so in the log: the expected codes the
+   * callers assert on (22 / 178 / 196 / 354 / 367) are precise enough that a
+   * wrong pick fails the assertion rather than passing silently.
+   *
+   * @param {string} txHash - The transaction hash to query.
+   * @param {string} entityId - System contract entity id, e.g. '0.0.359'.
+   * @param {string} evmAddress - The same contract's long-zero EVM address.
+   * @returns {Promise<string>} - The response code as a string.
+   */
+  static async getSystemContractResponseCode(txHash, entityId, evmAddress) {
     const mirrorNodeUrl = Utils.getMirrorNodeUrl(networkName);
-    const res = await Utils.retriedGetRequest(
-      `${mirrorNodeUrl}/contracts/results/${txHash}/actions`,
+    const target = evmAddress.toLowerCase();
+    const url = `${mirrorNodeUrl}/contracts/results/${txHash}/actions`;
+    // retriedGetRequest only retries on an HTTP error; a result that is present
+    // but whose actions have not been ingested yet answers 200 with an empty
+    // list, so wait that out too.
+    let actions = [];
+    for (let attempt = 0; attempt < 5 && !actions.length; attempt++) {
+      if (attempt) await Utils.sleep(1000);
+      const res = await Utils.retriedGetRequest(url);
+      actions = res.data?.actions ?? [];
+    }
+
+    const precompileAction = actions.find(
+      (x) => x.recipient === entityId || (x.to ?? '').toLowerCase() === target,
     );
-    const precompileAction = res.data.actions.find(
-      (x) => x.recipient === Constants.HTS_SYSTEM_CONTRACT_ID,
+    if (precompileAction?.result_data != null) {
+      return BigInt(precompileAction.result_data).toString();
+    }
+
+    const innermost = actions
+      .filter((x) => x.result_data != null)
+      .sort((a, b) => (b.call_depth ?? 0) - (a.call_depth ?? 0))[0];
+    if (!innermost) {
+      throw new Error(
+        `No action carrying result_data for ${txHash}; actions=${JSON.stringify(actions)}`,
+      );
+    }
+    console.log(
+      `[actions] no ${entityId} action for ${txHash}; falling back to depth ${innermost.call_depth} recipient=${innermost.recipient} to=${innermost.to}`,
     );
-    return BigInt(precompileAction.result_data).toString();
+    return BigInt(innermost.result_data).toString();
+  }
+
+  static async getHTSResponseCode(txHash) {
+    return Utils.getSystemContractResponseCode(
+      txHash,
+      Constants.HTS_SYSTEM_CONTRACT_ID,
+      Constants.HTS_SYSTEM_CONTRACT_ADDRESS,
+    );
   }
 
   /**
@@ -709,14 +758,11 @@ class Utils {
    * @returns {string} - The response code as a string.
    */
   static async getHASResponseCode(txHash) {
-    const mirrorNodeUrl = Utils.getMirrorNodeUrl(networkName);
-    const res = await Utils.retriedGetRequest(
-      `${mirrorNodeUrl}/contracts/results/${txHash}/actions`,
+    return Utils.getSystemContractResponseCode(
+      txHash,
+      Constants.HAS_SYSTEM_CONTRACT_ID,
+      Constants.HAS_SYSTEM_CONTRACT_ADDRESS,
     );
-    const precompileAction = res.data.actions.find(
-      (x) => x.recipient === Constants.HAS_SYSTEM_CONTRACT_ID,
-    );
-    return BigInt(precompileAction.result_data).toString();
   }
 
   static async setupNft(tokenCreateContract, owner, contractAddresses, hapi) {
