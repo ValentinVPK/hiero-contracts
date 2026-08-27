@@ -17,6 +17,7 @@ import {
   TokenCreateTransaction,
   TokenId,
   TokenUpdateTransaction,
+  TransferTransaction,
 } from '@hashgraph/sdk';
 import hre from 'hardhat';
 const connection = await hre.network.connect();
@@ -62,6 +63,45 @@ class Hapi {
       accountId: receipt.accountId.toString(),
       address: `0x${receipt.accountId.toSolidityAddress()}`,
     };
+  }
+
+  // Move token units / NFT serials from a hardhat signer to another account with
+  // a native HAPI transfer the sender signs itself. Used to seed a
+  // contract-keyed holder account: an allowance would work too, but it would
+  // also change the outcome of the suites' "without approval" negative tests.
+  async transferFromSigner(
+    senderIndex,
+    receiverAccountId,
+    { tokens = [], nfts = [] },
+  ) {
+    const signers = await connection.ethers.getSigners();
+    const pkSigners = (await utils.getHardhatSignersPrivateKeys()).map((pk) =>
+      PrivateKey.fromStringECDSA(pk),
+    );
+    const senderId = await this.getAccountId(signers[senderIndex].address);
+    this.client.setOperator(senderId, pkSigners[senderIndex]);
+
+    const tx = new TransferTransaction();
+    for (const { token, amount } of tokens) {
+      const tokenId = TokenId.fromSolidityAddress(token);
+      tx.addTokenTransfer(tokenId, senderId, -amount);
+      tx.addTokenTransfer(tokenId, receiverAccountId, amount);
+    }
+    for (const { token, serials } of nfts) {
+      for (const serial of serials) {
+        tx.addNftTransfer(
+          new NftId(TokenId.fromSolidityAddress(token), serial),
+          senderId,
+          receiverAccountId,
+        );
+      }
+    }
+
+    const response = await (
+      await tx.freezeWith(this.client).sign(pkSigners[senderIndex])
+    ).execute(this.client);
+    await response.getReceipt(this.client);
+    this.client.setOperator(config.operatorId, config.operatorKey);
   }
 
   async updateAccountKeys(contractAddresses, ecdsaPrivateKeys = []) {
@@ -194,9 +234,10 @@ class Hapi {
       }
     }
 
-    await (
+    const response = await (
       await tx.freezeWith(this.client).sign(pkSigners[ownerIndex])
     ).execute(this.client);
+    await response.getReceipt(this.client);
     this.client.setOperator(config.operatorId, config.operatorKey);
   }
 
