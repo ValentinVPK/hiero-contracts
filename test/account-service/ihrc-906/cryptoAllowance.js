@@ -3,7 +3,6 @@
 import { expect } from 'chai';
 import hre from 'hardhat';
 
-import Utils from '../../token-service/utils';
 const { ethers } = await hre.network.connect();
 import Constants from '../../constants';
 import { pollForNewSignerBalanceUsingProvider } from '../../helpers';
@@ -16,7 +15,8 @@ describe('@HAS IHRC-906 Test Suite', () => {
     cryptoAllowanceContract,
     cryptoOwnerContract,
     cryptoAllowanceAddress,
-    cryptoOwnerAddress;
+    cryptoOwnerAddress,
+    contractKeyedOwnerAddress;
   const amount = 3000;
 
   before(async () => {
@@ -46,6 +46,15 @@ describe('@HAS IHRC-906 Test Suite', () => {
         gasLimit: 1_000_000,
       })
     ).wait();
+
+    // An hbar owner the contract may approve on behalf of: its key is a
+    // threshold-1 KeyList holding cryptoAllowanceContract's id. Relay model —
+    // the hardhat signers stay plain-ECDSA senders, so the owner has to be a
+    // separate account that never sends a transaction itself.
+    const contractKeyedOwner = await hapi.createAccountWithContractIdKey([
+      cryptoAllowanceAddress,
+    ]);
+    contractKeyedOwnerAddress = ethers.getAddress(contractKeyedOwner.address);
   });
 
   after(function () {
@@ -90,19 +99,12 @@ describe('@HAS IHRC-906 Test Suite', () => {
     expect(responseCode.args).to.deep.eq([22n]);
     expect(logs.args[0]).to.eq(cryptoAllowanceAddress);
     expect(logs.args[1]).to.eq(walletB.address);
-    expect(logs.args[2]).to.eq(amount);
+    expect(logs.args[2]).to.eq(BigInt(amount));
   });
 
-  it('Should allow an approval on behalf of hbar owner WITH its signature', async () => {
-    // update accountKeys
-    const ecdsaPrivateKeys = await Utils.getHardhatSignersPrivateKeys(false);
-    await hapi.updateAccountKeys(
-      [cryptoAllowanceAddress],
-      [ecdsaPrivateKeys[0]], // walletA's key
-    );
-
+  it('Should allow an approval on behalf of an hbar owner whose key includes the contract', async () => {
     const approveTx = await cryptoAllowanceContract.hbarApprovePublic(
-      walletA.address,
+      contractKeyedOwnerAddress,
       walletB.address,
       amount,
       Constants.GAS_LIMIT_1_000_000,
@@ -110,7 +112,7 @@ describe('@HAS IHRC-906 Test Suite', () => {
     await approveTx.wait();
 
     const allowanceTx = await cryptoAllowanceContract.hbarAllowancePublic(
-      walletA.address,
+      contractKeyedOwnerAddress,
       walletB.address,
       Constants.GAS_LIMIT_1_000_000,
     );
@@ -122,9 +124,9 @@ describe('@HAS IHRC-906 Test Suite', () => {
     const logs = receipt.logs.find((l) => l.fragment.name === 'HbarAllowance');
 
     expect(responseCode.args).to.deep.eq([22n]);
-    expect(logs.args[0]).to.eq(walletA.address);
+    expect(logs.args[0]).to.eq(contractKeyedOwnerAddress);
     expect(logs.args[1]).to.eq(walletB.address);
-    expect(logs.args[2]).to.eq(amount);
+    expect(logs.args[2]).to.eq(BigInt(amount));
   });
 
   it('Should NOT allow an approval on behalf of hbar owner WITHOUT its signature', async () => {
@@ -163,13 +165,15 @@ describe('@HAS IHRC-906 Test Suite', () => {
     );
     await approveTx.wait();
 
-    // cryptoTransferPublic
+    // cryptoTransferPublic — the debit is authorized by the allowance granted
+    // just above, so the leg must be flagged as approved (walletA is a plain
+    // ECDSA sender; its key does not include the contract).
     const cryptoTransfers = {
       transfers: [
         {
           accountID: walletA.address,
           amount: amount * -1,
-          isApproval: false,
+          isApproval: true,
         },
         {
           accountID: walletC.address,
