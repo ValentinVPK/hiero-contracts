@@ -9,6 +9,12 @@ import hapi from '../hapi';
 import utils from '../utils';
 
 describe('TokenManagmentContract Test Suite', function () {
+  // [diag] strip once this suite is green. config.js sets mocha's timeout to an
+  // hour, so a call that never returns a receipt sits until the CI job's cap and
+  // the run reports nothing at all. Cap it per test so a hang is reported as a
+  // failure with a name instead.
+  this.timeout(240000);
+
   const TX_SUCCESS_CODE = 22;
   const CUSTOM_SCHEDULE_ALREADY_HAS_NO_FEES = '244';
   const TOKEN_HAS_NO_FEE_SCHEDULE_KEY = '240';

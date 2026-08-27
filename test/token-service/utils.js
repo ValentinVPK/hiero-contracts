@@ -113,13 +113,22 @@ class Utils {
       receipt = await tx.wait();
     } catch (err) {
       // [diag] strip once Token Management is green. The create helpers revert
-      // with no reason, so name the HTS code behind it.
-      console.log(
-        '[diag] token create reverted, hts code =',
-        await Utils.getHTSResponseCode(tx.hash).catch(
-          (e) => `unavailable (${e.message})`,
-        ),
-      );
+      // with no reason, so name the HTS code behind it. Deliberately a single
+      // un-retried request: the retrying path can spend minutes per failure,
+      // and mocha's timeout here is an hour, so a slow diagnostic turns a
+      // failing test into a dead job.
+      const code = await axios
+        .get(
+          `${Utils.getMirrorNodeUrl(networkName)}/contracts/results/${tx.hash}/actions`,
+        )
+        .then((res) =>
+          (res.data?.actions ?? [])
+            .filter((a) => a.result_data != null)
+            .map((a) => `${a.recipient ?? a.to}=${BigInt(a.result_data)}`)
+            .join(' '),
+        )
+        .catch((e) => `unavailable (${e.message})`);
+      console.log('[diag] token create reverted, actions:', code);
       throw err;
     }
     const { tokenAddress } = receipt.logs.filter(
