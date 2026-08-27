@@ -504,6 +504,12 @@ class Utils {
     );
   }
 
+  // KYC can only be granted to an account already associated with the token.
+  // signers[1] is no longer associated through the contract (that needed the
+  // account's key to include it), so granting to it reverts — and because these
+  // calls carry no explicit gas limit, ethers estimates gas first and the revert
+  // surfaces immediately rather than being swallowed. Callers that need KYC for
+  // other accounts associate and grant those explicitly.
   static async grantTokenKyc(contract, tokenAddress) {
     const signers = await ethers.getSigners();
     await contract.grantTokenKycPublic(
@@ -511,7 +517,6 @@ class Utils {
       await contract.getAddress(),
     );
     await contract.grantTokenKycPublic(tokenAddress, signers[0].address);
-    await contract.grantTokenKycPublic(tokenAddress, signers[1].address);
   }
 
   // [diag] Walk the error's cause chain and surface the relay's JSON-RPC body /
