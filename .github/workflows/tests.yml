@@ -30,8 +30,8 @@ defaults:
     shell: bash
 
 jobs:
-  HRC:
-    name: HRC Test Suite
+  HIP904Batch1:
+    name: HIP904 Contract Test Suite Batch 1
     uses: ./.github/workflows/test-workflow.yml
     with:
-      testfilter: HRC
+      testfilter: HIP904Batch1

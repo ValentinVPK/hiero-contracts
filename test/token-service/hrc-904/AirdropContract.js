@@ -16,6 +16,7 @@ describe('HIP904Batch1 AirdropContract Test Suite', function () {
   let nftTokenAddress;
   let signers;
   let owner;
+  let emptySender;
   let accounts;
   let contractAddresses;
   let walletIHRC904AccountFacade;
@@ -32,14 +33,27 @@ describe('HIP904Batch1 AirdropContract Test Suite', function () {
     erc721Contract = await utils.deployContract(
       Constants.Contract.ERC721Contract,
     );
-    owner = signers[0].address;
     accounts = signers.slice(1, 3).map((s) => s.address);
 
     contractAddresses = [
       await airdropContract.getAddress(),
       await tokenCreateContract.getAddress(),
     ];
-    await hapi.updateAccountKeys(contractAddresses);
+
+    // Relay model: no account re-keying. The Airdrop contract debits the sender
+    // and leaves isApproval false, so the sender's key has to include the
+    // contract — which a hardhat signer cannot have while it still sends
+    // EthereumTransactions. The airdrop sender is therefore a contract-keyed
+    // account that only ever acts as a subject (signers[0] still sends every
+    // transaction), and it is the treasury of every token created below, so it
+    // holds the supply without any seeding transfer.
+    owner = (await hapi.createAccountWithContractIdKey(contractAddresses))
+      .address;
+    // A second contract-keyed account, associated but holding nothing, so the
+    // insufficient-balance test fails on the balance rather than on
+    // authorization or a missing association.
+    emptySender = (await hapi.createAccountWithContractIdKey(contractAddresses))
+      .address;
 
     tokenAddress = await utils.setupToken(
       tokenCreateContract,
@@ -53,6 +67,13 @@ describe('HIP904Batch1 AirdropContract Test Suite', function () {
       contractAddresses,
       hapi,
     );
+    await (
+      await tokenCreateContract.associateTokenPublic(
+        emptySender,
+        tokenAddress,
+        Constants.GAS_LIMIT_1_000_000,
+      )
+    ).wait();
   });
 
   after(function () {
@@ -76,7 +97,7 @@ describe('HIP904Batch1 AirdropContract Test Suite', function () {
 
     const tx = await airdropContract.tokenAirdrop(
       tokenAddress,
-      signers[0].address,
+      owner,
       receiver,
       ftAmount,
       Constants.GAS_LIMIT_2_000_000,
@@ -303,7 +324,7 @@ describe('HIP904Batch1 AirdropContract Test Suite', function () {
 
     const tx = await airdropContract.tokenAirdrop(
       tokenAddress,
-      signers[2].address,
+      emptySender,
       receiver,
       ftAmount,
       Constants.GAS_LIMIT_2_000_000,
@@ -350,7 +371,7 @@ describe('HIP904Batch1 AirdropContract Test Suite', function () {
 
     const tx = await airdropContract.tokenAirdrop(
       tokenAddress,
-      signers[0].address,
+      owner,
       receiver,
       invalidAmount,
       Constants.GAS_LIMIT_2_000_000,
@@ -439,7 +460,7 @@ describe('HIP904Batch1 AirdropContract Test Suite', function () {
 
     const tx = await airdropContract.tokenAirdrop(
       tokenAddress,
-      signers[0].address,
+      owner,
       receiver.address,
       ftAmount,
       {

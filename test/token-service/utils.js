@@ -657,13 +657,17 @@ class Utils {
    * Reads a system contract's response code out of a transaction's mirror node
    * action tree.
    *
-   * The action addressed to the system contract is identified by entity id
-   * (`recipient`) OR by EVM address (`to`) — the entity-id form alone stopped
-   * matching on consensus v0.77 / mirror v0.161. If neither shape is present,
-   * fall back to the innermost action, which is where a facade/redirect call
-   * leaves its response code, and say so in the log: the expected codes the
-   * callers assert on (22 / 178 / 196 / 354 / 367) are precise enough that a
-   * wrong pick fails the assertion rather than passing silently.
+   * Two shapes are both normal, depending on how the precompile was reached:
+   *   - through a contract: the tree has a child action addressed to the system
+   *     contract, matched here by entity id (`recipient`) or EVM address (`to`).
+   *   - directly through a token/account facade (IHRC719, IHRC904, IHRC906): on
+   *     consensus v0.77 there is no child action for the system contract at all.
+   *     The single depth-0 action — whose recipient is the token itself, or null
+   *     for an account facade — carries the response code.
+   * So fall through to the innermost action carrying result_data. For the
+   * contract case that is the same system-contract action the match found, and
+   * the exact codes callers assert on (22 / 178 / 196 / 354 / 367) mean a wrong
+   * pick fails the assertion rather than passing silently.
    *
    * @param {string} txHash - The transaction hash to query.
    * @param {string} entityId - System contract entity id, e.g. '0.0.359'.
@@ -699,9 +703,6 @@ class Utils {
         `No action carrying result_data for ${txHash}; actions=${JSON.stringify(actions)}`,
       );
     }
-    console.log(
-      `[actions] no ${entityId} action for ${txHash}; falling back to depth ${innermost.call_depth} recipient=${innermost.recipient} to=${innermost.to}`,
-    );
     return BigInt(innermost.result_data).toString();
   }
 
