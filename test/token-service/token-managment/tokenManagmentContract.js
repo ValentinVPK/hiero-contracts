@@ -119,13 +119,13 @@ describe('TokenManagmentContract Test Suite', function () {
       tokenCreateCustomContractAddress,
     ];
     holderA = ethers.getAddress(
-      (await hapi.createAccountWithContractIdKey(contractKeys)).address,
+      (await hapi.createAccountWithContractIdKey(contractKeys, 2000)).address,
     );
     holderB = ethers.getAddress(
-      (await hapi.createAccountWithContractIdKey(contractKeys)).address,
+      (await hapi.createAccountWithContractIdKey(contractKeys, 2000)).address,
     );
     holderC = ethers.getAddress(
-      (await hapi.createAccountWithContractIdKey(contractKeys)).address,
+      (await hapi.createAccountWithContractIdKey(contractKeys, 2000)).address,
     );
     // Treasury and fee collector for the per-test tokens in the "Update fees"
     // suite. Those tokens are created fresh in each test, so their treasury has
@@ -133,7 +133,7 @@ describe('TokenManagmentContract Test Suite', function () {
     // seeds a holder cannot come from it. Kept out of every association list,
     // since a treasury is associated to its own token already.
     holderT = ethers.getAddress(
-      (await hapi.createAccountWithContractIdKey(contractKeys)).address,
+      (await hapi.createAccountWithContractIdKey(contractKeys, 2000)).address,
     );
     // Treasury of the main suite's tokens. It has to be an account the
     // contracts may act for: updateTokenInfo carries the treasury field and so
@@ -141,7 +141,7 @@ describe('TokenManagmentContract Test Suite', function () {
     // make. signers[0] can be neither now that it is not re-keyed, so it only
     // signs token creates (as the admin key) and pays for every transaction.
     holderS = ethers.getAddress(
-      (await hapi.createAccountWithContractIdKey(contractKeys)).address,
+      (await hapi.createAccountWithContractIdKey(contractKeys, 2000)).address,
     );
     erc20Contract = await utils.deployERC20Contract();
     tokenAddress = await utils.createFungibleTokenWithSECP256K1AdminKey(
@@ -473,7 +473,7 @@ describe('TokenManagmentContract Test Suite', function () {
 
     const expiryInfo = {
       second: AUTO_RENEW_SECOND,
-      autoRenewAccount: `${signers[0].address}`,
+      autoRenewAccount: `${holderS}`,
       autoRenewPeriod: NEW_AUTO_RENEW_PERIOD,
     };
 
@@ -2130,6 +2130,13 @@ describe('TokenManagmentContract Test Suite', function () {
         feeToken2,
         Constants.Contract.TokenCreateContract,
       );
+      // The fee collector has to be associated with the token a fixed fee is
+      // denominated in, or the create fails with
+      // TOKEN_NOT_ASSOCIATED_TO_FEE_COLLECTOR. utils.associateToken only
+      // reaches the contract itself now.
+      await utils.associateAndGrantKyc(tokenCreateCustomContract, feeToken2, [
+        holderT,
+      ]);
 
       const fractionalFee = {
         numerator: fractionalFeeNumerator,
@@ -2258,6 +2265,13 @@ describe('TokenManagmentContract Test Suite', function () {
         feeToken2,
         Constants.Contract.TokenCreateContract,
       );
+      // The fee collector has to be associated with the token a fixed fee is
+      // denominated in, or the create fails with
+      // TOKEN_NOT_ASSOCIATED_TO_FEE_COLLECTOR. utils.associateToken only
+      // reaches the contract itself now.
+      await utils.associateAndGrantKyc(tokenCreateCustomContract, feeToken2, [
+        holderT,
+      ]);
 
       const fractionalFee = {
         numerator: fractionalFeeNumerator,
@@ -2390,6 +2404,13 @@ describe('TokenManagmentContract Test Suite', function () {
         feeToken2,
         Constants.Contract.TokenCreateCustomContract,
       );
+      // The fee collector has to be associated with the token a fixed fee is
+      // denominated in, or the create fails with
+      // TOKEN_NOT_ASSOCIATED_TO_FEE_COLLECTOR. utils.associateToken only
+      // reaches the contract itself now.
+      await utils.associateAndGrantKyc(tokenCreateCustomContract, feeToken2, [
+        holderT,
+      ]);
 
       const fixedFeeAmount = tokenFeeAmount + 50;
       const fractionalFee = {
@@ -2777,6 +2798,13 @@ describe('TokenManagmentContract Test Suite', function () {
         feeToken,
         Constants.Contract.TokenCreateCustomContract,
       );
+      // The fee collector has to be associated with the token a fixed fee is
+      // denominated in, or the create fails with
+      // TOKEN_NOT_ASSOCIATED_TO_FEE_COLLECTOR. utils.associateToken only
+      // reaches the contract itself now.
+      await utils.associateAndGrantKyc(tokenCreateCustomContract, feeToken, [
+        holderT,
+      ]);
       //we need to grant kyc and associate token with the fee collector, which is signer[0]
       const grantKycFeeCollectorFeeToken =
         await tokenCreateCustomContract.grantTokenKycPublic(feeToken, holderT);
@@ -2894,6 +2922,13 @@ describe('TokenManagmentContract Test Suite', function () {
         feeToken,
         Constants.Contract.TokenCreateContract,
       );
+      // The fee collector has to be associated with the token a fixed fee is
+      // denominated in, or the create fails with
+      // TOKEN_NOT_ASSOCIATED_TO_FEE_COLLECTOR. utils.associateToken only
+      // reaches the contract itself now.
+      await utils.associateAndGrantKyc(tokenCreateCustomContract, feeToken, [
+        holderT,
+      ]);
       //we need to grant kyc and associate token with the fee collector, which is signer[0]
       const grantKycFeeCollectorFeeToken =
         await tokenCreateCustomContract.grantTokenKycPublic(feeToken, holderT);

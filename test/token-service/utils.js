@@ -123,8 +123,14 @@ class Utils {
         )
         .then((res) =>
           (res.data?.actions ?? [])
-            .filter((a) => a.result_data != null)
-            .map((a) => `${a.recipient ?? a.to}=${BigInt(a.result_data)}`)
+            .map((a) => {
+              // result_data is '0x' when a call reverted without returning
+              // anything, and BigInt('0x') throws — keep it raw in that case.
+              const raw = a.result_data;
+              const decoded =
+                raw && raw !== '0x' ? BigInt(raw).toString() : raw;
+              return `${a.recipient ?? a.to}[d${a.call_depth}]=${decoded}`;
+            })
             .join(' '),
         )
         .catch((e) => `unavailable (${e.message})`);
