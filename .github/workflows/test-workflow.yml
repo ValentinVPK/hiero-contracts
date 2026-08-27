@@ -29,7 +29,7 @@ permissions:
 jobs:
   acceptance-workflow:
     runs-on: hl-contr-lin-lg
-    timeout-minutes: 15 # TEMPORARY (v0.77 iteration) — restore to 45 before merge
+    timeout-minutes: 25 # TEMPORARY (v0.77 iteration) — restore to 45 before merge
     strategy:
       fail-fast: false
 

@@ -791,10 +791,15 @@ class Utils {
       false,
     );
 
-    await this.associateToken(
-      tokenCreateContract,
+    // Only the contract's own association is meaningful now: the signers can no
+    // longer be associated through the contract (that needed the re-key) and
+    // they take tokens by auto-association instead. Those three per-token calls
+    // reverted and were silently swallowed, and at ~48 tokens per suite they
+    // cost enough wall clock to push the job past its timeout.
+    await tokenCreateContract.associateTokenPublic(
+      await tokenCreateContract.getAddress(),
       nftTokenAddress,
-      Constants.Contract.TokenCreateContract,
+      Constants.GAS_LIMIT_1_000_000,
     );
 
     return nftTokenAddress;
@@ -820,10 +825,15 @@ class Utils {
       false,
     );
 
-    await this.associateToken(
-      tokenCreateContract,
+    // Only the contract's own association is meaningful now: the signers can no
+    // longer be associated through the contract (that needed the re-key) and
+    // they take tokens by auto-association instead. Those three per-token calls
+    // reverted and were silently swallowed, and at ~48 tokens per suite they
+    // cost enough wall clock to push the job past its timeout.
+    await tokenCreateContract.associateTokenPublic(
+      await tokenCreateContract.getAddress(),
       tokenAddress,
-      Constants.Contract.TokenCreateContract,
+      Constants.GAS_LIMIT_1_000_000,
     );
 
     return tokenAddress;

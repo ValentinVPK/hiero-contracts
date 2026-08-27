@@ -97,34 +97,6 @@ describe('HIP904Batch1 AirdropContract Test Suite', function () {
         )
       ).wait();
     }
-
-    // [diag] strip once this suite is green. Reports whether the receivers
-    // really ended up with unlimited auto-association, and what code a plain
-    // airdrop returns — the contract reverts with no reason on a non-SUCCESS
-    // code, so without this a failure says nothing.
-    for (const account of accounts) {
-      console.log(
-        '[diag] maxAutoAssoc',
-        account,
-        await utils.getMaxAutomaticTokenAssociations(account),
-      );
-    }
-    const diagTx = await airdropContract.tokenAirdrop(
-      tokenAddress,
-      owner,
-      accounts[0],
-      BigInt(1),
-      { ...Constants.GAS_LIMIT_2_000_000, value: Constants.ONE_HBAR },
-    );
-    try {
-      await diagTx.wait();
-      console.log('[diag] plain airdrop with value: OK');
-    } catch {
-      console.log(
-        '[diag] plain airdrop reverted, hts code =',
-        await utils.getHTSResponseCode(diagTx.hash),
-      );
-    }
   });
 
   after(function () {
