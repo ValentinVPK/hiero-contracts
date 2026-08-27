@@ -108,35 +108,7 @@ class Utils {
   }
 
   static async getTokenAddress(tx) {
-    let receipt;
-    try {
-      receipt = await tx.wait();
-    } catch (err) {
-      // [diag] strip once Token Management is green. The create helpers revert
-      // with no reason, so name the HTS code behind it. Deliberately a single
-      // un-retried request: the retrying path can spend minutes per failure,
-      // and mocha's timeout here is an hour, so a slow diagnostic turns a
-      // failing test into a dead job.
-      const code = await axios
-        .get(
-          `${Utils.getMirrorNodeUrl(networkName)}/contracts/results/${tx.hash}/actions`,
-        )
-        .then((res) =>
-          (res.data?.actions ?? [])
-            .map((a) => {
-              // result_data is '0x' when a call reverted without returning
-              // anything, and BigInt('0x') throws — keep it raw in that case.
-              const raw = a.result_data;
-              const decoded =
-                raw && raw !== '0x' ? BigInt(raw).toString() : raw;
-              return `${a.recipient ?? a.to}[d${a.call_depth}]=${decoded}`;
-            })
-            .join(' '),
-        )
-        .catch((e) => `unavailable (${e.message})`);
-      console.log('[diag] token create reverted, actions:', code);
-      throw err;
-    }
+    const receipt = await tx.wait();
     const { tokenAddress } = receipt.logs.filter(
       (e) => e.fragment.name === Constants.Events.CreatedToken,
     )[0].args;
@@ -451,84 +423,48 @@ class Utils {
   // Add Token association via hedera.js sdk
   // Client with signer - my private key example
 
-  // A dedicated plain-ECDSA account used to sign EthereumTransactions. v0.77
-  // requires the sender of an EthereumTransaction to have a single ECDSA key, so
-  // the re-keyed (KeyList) signer accounts can no longer send — only be acted on.
-  // Fund it from a still-plain-ECDSA account BEFORE updateAccountKeys runs.
-  static async createTxSigner(funder, hbars = 100) {
-    const wallet = ethers.Wallet.createRandom().connect(ethers.provider);
-    await (
-      await funder.sendTransaction({
-        to: wallet.address,
-        value: ethers.parseEther(String(hbars)),
-      })
-    ).wait();
-    // One txSigner submits many sequential EthereumTransactions; NonceManager
-    // assigns nonces locally so rapid sends don't race the relay's lagging
-    // "pending" count (which surfaced as WRONG_NONCE).
-    return new ethers.NonceManager(wallet);
-  }
-
   // Under the v0.77 security model a re-keyed (KeyList) account can no longer send
   // an EthereumTransaction, so when txSigner is supplied the per-account associate
   // calls are sent by it instead of the (re-keyed) signers. The account being
   // associated is still signers[N] — it stays a subject, referenced by address.
-  static async associateToken(contract, tokenAddress, contractName, txSigner) {
+  static async associateToken(contract, tokenAddress, contractName) {
     const signers = await ethers.getSigners();
     const associateTx1 = await ethers.getContractAt(
       contractName,
       await contract.getAddress(),
-      txSigner ?? signers[0],
+      signers[0],
     );
     const associateTx2 = await ethers.getContractAt(
       contractName,
       await contract.getAddress(),
-      txSigner ?? signers[1],
+      signers[1],
     );
 
     const associateTx3 = await ethers.getContractAt(
       contractName,
       await contract.getAddress(),
-      txSigner ?? signers[2],
+      signers[2],
     );
 
-    // [diag] wrap each associate so a 400 logs the relay's real reason + which target
-    const diag = async (label, fn) => {
-      try {
-        return await fn();
-      } catch (err) {
-        Utils.logRelayError(label, err);
-        throw err;
-      }
-    };
-    const contractAddress = await contract.getAddress();
-    await diag('associate:contract-self', () =>
-      contract.associateTokenPublic(
-        contractAddress,
-        tokenAddress,
-        Constants.GAS_LIMIT_1_000_000,
-      ),
+    await contract.associateTokenPublic(
+      await contract.getAddress(),
+      tokenAddress,
+      Constants.GAS_LIMIT_1_000_000,
     );
-    await diag('associate:signer0', () =>
-      associateTx1.associateTokenPublic(
-        signers[0].address,
-        tokenAddress,
-        Constants.GAS_LIMIT_1_000_000,
-      ),
+    await associateTx1.associateTokenPublic(
+      signers[0].address,
+      tokenAddress,
+      Constants.GAS_LIMIT_1_000_000,
     );
-    await diag('associate:signer1', () =>
-      associateTx2.associateTokenPublic(
-        signers[1].address,
-        tokenAddress,
-        Constants.GAS_LIMIT_1_000_000,
-      ),
+    await associateTx2.associateTokenPublic(
+      signers[1].address,
+      tokenAddress,
+      Constants.GAS_LIMIT_1_000_000,
     );
-    await diag('associate:signer2', () =>
-      associateTx3.associateTokenPublic(
-        signers[2].address,
-        tokenAddress,
-        Constants.GAS_LIMIT_1_000_000,
-      ),
+    await associateTx3.associateTokenPublic(
+      signers[2].address,
+      tokenAddress,
+      Constants.GAS_LIMIT_1_000_000,
     );
   }
 
@@ -543,26 +479,6 @@ class Utils {
       tokenAddress,
       await contract.getAddress(),
     );
-  }
-
-  // [diag] Walk the error's cause chain and surface the relay's JSON-RPC body /
-  // status so a bare "400 Bad Request" reveals the real consensus reason.
-  static logRelayError(label, err) {
-    let e = err;
-    for (let depth = 0; e && depth < 8; depth++, e = e.cause) {
-      const parts = [`msg=${e.message ?? ''}`];
-      if (e.statusCode !== undefined) parts.push(`status=${e.statusCode}`);
-      if (e.code !== undefined) parts.push(`code=${e.code}`);
-      for (const key of ['body', 'data', 'info', 'error']) {
-        if (e[key] != null) {
-          const val = e[key];
-          parts.push(
-            `${key}=${typeof val === 'string' ? val : JSON.stringify(val)}`,
-          );
-        }
-      }
-      console.log(`[diag] ${label} cause[${depth}]: ${parts.join(' | ')}`);
-    }
   }
 
   static async expectToFail(transaction, code = null) {

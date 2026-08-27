@@ -27,32 +27,12 @@ describe('TokenTransferContract Test Suite', function () {
   let signers;
 
   before(async function () {
-    this.timeout(180000); // [diag] bound the hook so a hang flushes instead of eating the job cap
-    const step = async (label, fn) => {
-      console.log('[diag] tokentransfer: ' + label);
-      try {
-        return await fn();
-      } catch (err) {
-        utils.logRelayError('tokentransfer:' + label, err);
-        throw err;
-      }
-    };
     signers = await ethers.getSigners();
-    tokenCreateContract = await step('deployTokenCreate', () =>
-      utils.deployTokenCreateContract(),
-    );
-    tokenQueryContract = await step('deployTokenQuery', () =>
-      utils.deployTokenQueryContract(),
-    );
-    tokenTransferContract = await step('deployTokenTransfer', () =>
-      utils.deployTokenTransferContract(),
-    );
-    erc20Contract = await step('deployERC20', () =>
-      utils.deployERC20Contract(),
-    );
-    erc721Contract = await step('deployERC721', () =>
-      utils.deployERC721Contract(),
-    );
+    tokenCreateContract = await utils.deployTokenCreateContract();
+    tokenQueryContract = await utils.deployTokenQueryContract();
+    tokenTransferContract = await utils.deployTokenTransferContract();
+    erc20Contract = await utils.deployERC20Contract();
+    erc721Contract = await utils.deployERC721Contract();
     const contractKeys = [
       await tokenCreateContract.getAddress(),
       await tokenQueryContract.getAddress(),
@@ -64,48 +44,33 @@ describe('TokenTransferContract Test Suite', function () {
     // hands operational keys to the contracts. signer0 stays a plain-ECDSA
     // holder/sender and signs its own debits; signer1 self-associates + gets
     // contract-granted KYC as the transfer counterparty.
-    tokenAddress = await step('createFungibleToken', () =>
-      utils.createFungibleTokenWithSECP256K1AdminKey(
-        tokenCreateContract,
-        signers[0].address,
-        utils.getSignerCompressedPublicKey(),
-      ),
+    tokenAddress = await utils.createFungibleTokenWithSECP256K1AdminKey(
+      tokenCreateContract,
+      signers[0].address,
+      utils.getSignerCompressedPublicKey(),
     );
-    await step('updateTokenKeys FT', () =>
-      hapi.updateTokenKeys(tokenAddress, contractKeys),
+    await hapi.updateTokenKeys(tokenAddress, contractKeys);
+    nftTokenAddress = await utils.createNonFungibleTokenWithSECP256K1AdminKey(
+      tokenCreateContract,
+      signers[0].address,
+      utils.getSignerCompressedPublicKey(),
     );
-    nftTokenAddress = await step('createNonFungibleToken', () =>
-      utils.createNonFungibleTokenWithSECP256K1AdminKey(
-        tokenCreateContract,
-        signers[0].address,
-        utils.getSignerCompressedPublicKey(),
-      ),
+    await hapi.updateTokenKeys(nftTokenAddress, contractKeys);
+    mintedTokenSerialNumber = await utils.mintNFT(
+      tokenCreateContract,
+      nftTokenAddress,
     );
-    await step('updateTokenKeys NFT', () =>
-      hapi.updateTokenKeys(nftTokenAddress, contractKeys),
+    await hapi.associateWithSigner(signer1Pk, tokenAddress);
+    await hapi.associateWithSigner(signer1Pk, nftTokenAddress);
+    await tokenCreateContract.grantTokenKycPublic(
+      tokenAddress,
+      signers[1].address,
+      Constants.GAS_LIMIT_1_000_000,
     );
-    mintedTokenSerialNumber = await step('mintNFT', () =>
-      utils.mintNFT(tokenCreateContract, nftTokenAddress),
-    );
-    await step('associate signer1 FT', () =>
-      hapi.associateWithSigner(signer1Pk, tokenAddress),
-    );
-    await step('associate signer1 NFT', () =>
-      hapi.associateWithSigner(signer1Pk, nftTokenAddress),
-    );
-    await step('grantKyc signer1 FT', () =>
-      tokenCreateContract.grantTokenKycPublic(
-        tokenAddress,
-        signers[1].address,
-        Constants.GAS_LIMIT_1_000_000,
-      ),
-    );
-    await step('grantKyc signer1 NFT', () =>
-      tokenCreateContract.grantTokenKycPublic(
-        nftTokenAddress,
-        signers[1].address,
-        Constants.GAS_LIMIT_1_000_000,
-      ),
+    await tokenCreateContract.grantTokenKycPublic(
+      nftTokenAddress,
+      signers[1].address,
+      Constants.GAS_LIMIT_1_000_000,
     );
 
     // The direct transfer precompiles (transferToken(s)/transferNFT(s)) do not
@@ -115,61 +80,44 @@ describe('TokenTransferContract Test Suite', function () {
     // subject, never as an EthereumTransaction sender. It is associated and
     // KYC-granted through the contract, then seeded from the treasury (signer0)
     // with a native transfer signer0 signs itself.
-    const holder = await step('createHolderAccount', () =>
-      hapi.createAccountWithContractIdKey(contractKeys),
-    );
+    const holder = await hapi.createAccountWithContractIdKey(contractKeys);
     holderAddress = ethers.getAddress(holder.address);
-    await step('associate holder FT', async () =>
-      (
-        await tokenCreateContract.associateTokenPublic(
-          holderAddress,
-          tokenAddress,
-          Constants.GAS_LIMIT_1_000_000,
-        )
-      ).wait(),
-    );
-    await step('associate holder NFT', async () =>
-      (
-        await tokenCreateContract.associateTokenPublic(
-          holderAddress,
-          nftTokenAddress,
-          Constants.GAS_LIMIT_1_000_000,
-        )
-      ).wait(),
-    );
-    await step('grantKyc holder FT', async () =>
-      (
-        await tokenCreateContract.grantTokenKycPublic(
-          tokenAddress,
-          holderAddress,
-          Constants.GAS_LIMIT_1_000_000,
-        )
-      ).wait(),
-    );
-    await step('grantKyc holder NFT', async () =>
-      (
-        await tokenCreateContract.grantTokenKycPublic(
-          nftTokenAddress,
-          holderAddress,
-          Constants.GAS_LIMIT_1_000_000,
-        )
-      ).wait(),
-    );
+    await (
+      await tokenCreateContract.associateTokenPublic(
+        holderAddress,
+        tokenAddress,
+        Constants.GAS_LIMIT_1_000_000,
+      )
+    ).wait();
+    await (
+      await tokenCreateContract.associateTokenPublic(
+        holderAddress,
+        nftTokenAddress,
+        Constants.GAS_LIMIT_1_000_000,
+      )
+    ).wait();
+    await (
+      await tokenCreateContract.grantTokenKycPublic(
+        tokenAddress,
+        holderAddress,
+        Constants.GAS_LIMIT_1_000_000,
+      )
+    ).wait();
+    await (
+      await tokenCreateContract.grantTokenKycPublic(
+        nftTokenAddress,
+        holderAddress,
+        Constants.GAS_LIMIT_1_000_000,
+      )
+    ).wait();
     holderSerialNumbers = [
-      await step('mintNFT holder 1', () =>
-        utils.mintNFT(tokenCreateContract, nftTokenAddress),
-      ),
-      await step('mintNFT holder 2', () =>
-        utils.mintNFT(tokenCreateContract, nftTokenAddress),
-      ),
+      await utils.mintNFT(tokenCreateContract, nftTokenAddress),
+      await utils.mintNFT(tokenCreateContract, nftTokenAddress),
     ];
-    await step('seed holder', () =>
-      hapi.transferFromSigner(0, holder.accountId, {
-        tokens: [{ token: tokenAddress, amount: 1000 }],
-        nfts: [{ token: nftTokenAddress, serials: holderSerialNumbers }],
-      }),
-    );
-    console.log('[diag] tokentransfer: before DONE');
+    await hapi.transferFromSigner(0, holder.accountId, {
+      tokens: [{ token: tokenAddress, amount: 1000 }],
+      nfts: [{ token: nftTokenAddress, serials: holderSerialNumbers }],
+    });
   });
 
   after(function () {

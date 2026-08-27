@@ -19,43 +19,29 @@ describe('IERC20 Test Suite', function () {
   const AMOUNT = BigInt(33);
 
   before(async function () {
-    this.timeout(180000); // [diag] bound the hook so a hang flushes instead of eating the 45m job cap
-    console.log('[diag] ierc20: getSigners');
     signers = await ethers.getSigners();
-    console.log('[diag] ierc20: deployTokenCreateContract');
     tokenCreateContract = await utils.deployTokenCreateContract();
     // v0.77: these are direct EOA ERC20 calls — signer0/signer1 own and move
     // their OWN tokens, so they must stay plain-ECDSA senders (no
     // updateAccountKeys). Create the token via the SDK with signer0 as treasury,
     // so no contract intermediary needs a KeyList on those accounts.
-    console.log('[diag] ierc20: createFungibleTokenViaSdk');
     tokenAddress = await hapi.createFungibleTokenViaSdk(0);
-    console.log('[diag] ierc20: created token ' + tokenAddress);
     await sleep();
     // signer1 self-associates (SDK, signed by its own key); the contract used as
     // the transferFrom recipient associates itself.
-    console.log('[diag] ierc20: associateWithSigner(signer1)');
     await hapi.associateWithSigner(
       utils.getHardhatSignerPrivateKeyByIndex(1),
       tokenAddress,
     );
-    console.log('[diag] ierc20: contract self-associate');
-    try {
-      await tokenCreateContract.associateTokenPublic(
-        await tokenCreateContract.getAddress(),
-        tokenAddress,
-        Constants.GAS_LIMIT_1_000_000,
-      );
-    } catch (err) {
-      utils.logRelayError('ierc20:self-associate', err);
-      throw err;
-    }
-    console.log('[diag] ierc20: getContractAt');
+    await tokenCreateContract.associateTokenPublic(
+      await tokenCreateContract.getAddress(),
+      tokenAddress,
+      Constants.GAS_LIMIT_1_000_000,
+    );
     IERC20 = await ethers.getContractAt(
       Constants.Contract.ERC20Mock,
       tokenAddress,
     );
-    console.log('[diag] ierc20: before DONE');
   });
 
   after(function () {

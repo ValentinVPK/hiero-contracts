@@ -16,83 +16,58 @@ describe('ERC721Contract Test Suite', function () {
   let signers, firstWallet, secondWallet;
 
   before(async function () {
-    this.timeout(180000); // [diag] bound the hook so a hang flushes instead of eating the 45m job cap
-    const step = async (label, fn) => {
-      console.log('[diag] erc721c: ' + label);
-      try {
-        return await fn();
-      } catch (err) {
-        utils.logRelayError('erc721c:' + label, err);
-        throw err;
-      }
-    };
     signers = await ethers.getSigners();
     firstWallet = signers[0];
     secondWallet = signers[1];
-    tokenCreateContract = await step('deployTokenCreateContract', () =>
-      utils.deployTokenCreateContract(),
-    );
-    erc721Contract = await step('deployERC721Contract', () =>
-      utils.deployERC721Contract(),
-    );
+    tokenCreateContract = await utils.deployTokenCreateContract();
+    erc721Contract = await utils.deployERC721Contract();
     const tokenCreateAddr = await tokenCreateContract.getAddress();
     const erc721Addr = await erc721Contract.getAddress();
     // Relay model: no account re-keying. The token is precompile-created (so the
     // contract can read its ERC721 facade) with the CONTRACT as treasury — a
     // contract authorizes itself, whereas an EOA treasury would need re-keying.
-    tokenAddress = await step('createNonFungibleToken', () =>
-      utils.createNonFungibleToken(tokenCreateContract, tokenCreateAddr),
+    tokenAddress = await utils.createNonFungibleToken(
+      tokenCreateContract,
+      tokenCreateAddr,
     );
     // Recipients must be associated + KYC-granted. Signers self-associate with
     // their own key; the contract holds the inherited KYC key so it grants KYC
     // without the target signing.
-    await step('associate firstWallet', () =>
-      hapi.associateWithSigner(
-        utils.getHardhatSignerPrivateKeyByIndex(0),
-        tokenAddress,
-      ),
+    await hapi.associateWithSigner(
+      utils.getHardhatSignerPrivateKeyByIndex(0),
+      tokenAddress,
     );
-    await step('associate secondWallet', () =>
-      hapi.associateWithSigner(
-        utils.getHardhatSignerPrivateKeyByIndex(1),
-        tokenAddress,
-      ),
+    await hapi.associateWithSigner(
+      utils.getHardhatSignerPrivateKeyByIndex(1),
+      tokenAddress,
     );
-    await step('grantKyc firstWallet', () =>
-      tokenCreateContract.grantTokenKycPublic(
-        tokenAddress,
-        firstWallet.address,
-        Constants.GAS_LIMIT_1_000_000,
-      ),
+    await tokenCreateContract.grantTokenKycPublic(
+      tokenAddress,
+      firstWallet.address,
+      Constants.GAS_LIMIT_1_000_000,
     );
-    await step('grantKyc secondWallet', () =>
-      tokenCreateContract.grantTokenKycPublic(
-        tokenAddress,
-        secondWallet.address,
-        Constants.GAS_LIMIT_1_000_000,
-      ),
+    await tokenCreateContract.grantTokenKycPublic(
+      tokenAddress,
+      secondWallet.address,
+      Constants.GAS_LIMIT_1_000_000,
     );
-    await step('associate erc721Contract', () =>
-      tokenCreateContract.associateTokenPublic(
-        erc721Addr,
-        tokenAddress,
-        Constants.GAS_LIMIT_1_000_000,
-      ),
+    await tokenCreateContract.associateTokenPublic(
+      erc721Addr,
+      tokenAddress,
+      Constants.GAS_LIMIT_1_000_000,
     );
-    await step('grantKyc erc721Contract', () =>
-      tokenCreateContract.grantTokenKycPublic(
-        tokenAddress,
-        erc721Addr,
-        Constants.GAS_LIMIT_1_000_000,
-      ),
+    await tokenCreateContract.grantTokenKycPublic(
+      tokenAddress,
+      erc721Addr,
+      Constants.GAS_LIMIT_1_000_000,
     );
     // Mint straight to firstWallet: the treasury contract mints then transfers
     // the NFT to msg.sender (firstWallet, the tx sender), authorized as owner.
-    mintedTokenSerialNumber = await step('mintNFTToAddress firstWallet', () =>
-      utils.mintNFTToAddress(tokenCreateContract, tokenAddress),
+    mintedTokenSerialNumber = await utils.mintNFTToAddress(
+      tokenCreateContract,
+      tokenAddress,
     );
     nftInitialOwnerAddress = firstWallet.address;
-    console.log('[diag] erc721c: before DONE');
   });
 
   after(function () {

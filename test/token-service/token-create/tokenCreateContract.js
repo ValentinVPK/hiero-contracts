@@ -30,30 +30,12 @@ describe('TokenCreateContract Test Suite', function () {
   let signers;
 
   before(async function () {
-    this.timeout(180000); // [diag] bound the hook so a hang flushes instead of eating the 45m job cap
-    const step = async (label, fn) => {
-      console.log('[diag] tokencreate: ' + label);
-      try {
-        return await fn();
-      } catch (err) {
-        utils.logRelayError('tokencreate:' + label, err);
-        throw err;
-      }
-    };
     signers = await ethers.getSigners();
-    tokenCreateContract = await step('deployTokenCreate', () =>
-      utils.deployTokenCreateContract(),
-    );
-    tokenTransferContract = await step('deployTokenTransfer', () =>
-      utils.deployTokenTransferContract(),
-    );
-    tokenManagmentContract = await step('deployTokenManagement', () =>
-      utils.deployTokenManagementContract(),
-    );
-    erc20Contract = await step('deployERC20', () =>
-      utils.deployERC20Contract(),
-    );
-    await step('deployERC721', () => utils.deployERC721Contract());
+    tokenCreateContract = await utils.deployTokenCreateContract();
+    tokenTransferContract = await utils.deployTokenTransferContract();
+    tokenManagmentContract = await utils.deployTokenManagementContract();
+    erc20Contract = await utils.deployERC20Contract();
+    await utils.deployERC721Contract();
     const contractKeys = [
       await tokenCreateContract.getAddress(),
       await tokenTransferContract.getAddress(),
@@ -64,83 +46,57 @@ describe('TokenCreateContract Test Suite', function () {
     // ECDSA admin key and signer0 as treasury — signer0 signs the create, so no
     // re-key is needed — then updateTokenKeys hands the operational keys to the
     // contracts. signer0 stays a plain-ECDSA sender and holder.
-    tokenAddress = await step('createFungibleToken', () =>
-      utils.createFungibleTokenWithSECP256K1AdminKey(
-        tokenCreateContract,
-        signers[0].address,
-        utils.getSignerCompressedPublicKey(),
-      ),
+    tokenAddress = await utils.createFungibleTokenWithSECP256K1AdminKey(
+      tokenCreateContract,
+      signers[0].address,
+      utils.getSignerCompressedPublicKey(),
     );
-    await step('updateTokenKeys FT', () =>
-      hapi.updateTokenKeys(tokenAddress, contractKeys),
-    );
+    await hapi.updateTokenKeys(tokenAddress, contractKeys);
     // The custom-fee create tests use the contract as fee collector denominated
     // in tokenAddress, so the contract must be associated + KYC-granted on it.
-    await step('associate contract FT', () =>
-      tokenCreateContract.associateTokenPublic(
-        contractKeys[0],
-        tokenAddress,
-        Constants.GAS_LIMIT_1_000_000,
-      ),
+    await tokenCreateContract.associateTokenPublic(
+      contractKeys[0],
+      tokenAddress,
+      Constants.GAS_LIMIT_1_000_000,
     );
-    await step('grantKyc contract FT', () =>
-      tokenCreateContract.grantTokenKycPublic(
-        tokenAddress,
-        contractKeys[0],
-        Constants.GAS_LIMIT_1_000_000,
-      ),
+    await tokenCreateContract.grantTokenKycPublic(
+      tokenAddress,
+      contractKeys[0],
+      Constants.GAS_LIMIT_1_000_000,
     );
-    nftTokenAddress = await step('createNonFungibleToken', () =>
-      utils.createNonFungibleTokenWithSECP256K1AdminKey(
-        tokenCreateContract,
-        signers[0].address,
-        utils.getSignerCompressedPublicKey(),
-      ),
+    nftTokenAddress = await utils.createNonFungibleTokenWithSECP256K1AdminKey(
+      tokenCreateContract,
+      signers[0].address,
+      utils.getSignerCompressedPublicKey(),
     );
-    await step('updateTokenKeys NFT', () =>
-      hapi.updateTokenKeys(nftTokenAddress, contractKeys),
-    );
+    await hapi.updateTokenKeys(nftTokenAddress, contractKeys);
     // signer1 is a non-treasury holder used by the dissociate/KYC tests: it
     // self-associates with its own key, then the contract grants it KYC.
-    await step('associate signer1 FT', () =>
-      hapi.associateWithSigner(signer1Pk, tokenAddress),
+    await hapi.associateWithSigner(signer1Pk, tokenAddress);
+    await hapi.associateWithSigner(signer1Pk, nftTokenAddress);
+    await tokenCreateContract.grantTokenKycPublic(
+      tokenAddress,
+      signers[1].address,
+      Constants.GAS_LIMIT_1_000_000,
     );
-    await step('associate signer1 NFT', () =>
-      hapi.associateWithSigner(signer1Pk, nftTokenAddress),
+    await tokenCreateContract.grantTokenKycPublic(
+      nftTokenAddress,
+      signers[1].address,
+      Constants.GAS_LIMIT_1_000_000,
     );
-    await step('grantKyc signer1 FT', () =>
-      tokenCreateContract.grantTokenKycPublic(
-        tokenAddress,
-        signers[1].address,
-        Constants.GAS_LIMIT_1_000_000,
-      ),
-    );
-    await step('grantKyc signer1 NFT', () =>
-      tokenCreateContract.grantTokenKycPublic(
-        nftTokenAddress,
-        signers[1].address,
-        Constants.GAS_LIMIT_1_000_000,
-      ),
-    );
-    await step('mintNFT', () =>
-      utils.mintNFT(tokenCreateContract, nftTokenAddress),
-    );
+    await utils.mintNFT(tokenCreateContract, nftTokenAddress);
     // A KeyList account keyed to the contracts is the (dis)association subject
     // for the dissociate tests: the contracts can act on it, and it never sends
     // a transaction, so no EOA needs re-keying. Start it associated so it can be
     // dissociated then re-associated.
-    const keyListAccount = await step('createKeyListAccount', () =>
-      hapi.createAccountWithContractIdKey(contractKeys),
-    );
+    const keyListAccount =
+      await hapi.createAccountWithContractIdKey(contractKeys);
     keyListAccountAddress = keyListAccount.address;
-    await step('associate keyListAccount', () =>
-      tokenCreateContract.associateTokensPublic(
-        keyListAccountAddress,
-        [tokenAddress],
-        Constants.GAS_LIMIT_1_000_000,
-      ),
+    await tokenCreateContract.associateTokensPublic(
+      keyListAccountAddress,
+      [tokenAddress],
+      Constants.GAS_LIMIT_1_000_000,
     );
-    console.log('[diag] tokencreate: before DONE');
   });
 
   after(function () {
@@ -345,7 +301,6 @@ describe('TokenCreateContract Test Suite', function () {
   });
 
   describe('Hapi vs Ethereum token create test', function () {
-    this.timeout(180000); // [diag] bound tests so a hang flushes instead of eating the job cap
     // @notice: The param values below are preset to match the values preset in the
     // `createFungibleTokenWithSECP256K1AdminKeyPublic()` method in the TokenCreateContract.sol
     const tokenName = 'tokenName';
