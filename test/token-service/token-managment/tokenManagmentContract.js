@@ -2866,11 +2866,12 @@ describe('TokenManagmentContract Test Suite', function () {
       await hapi.getHbarBalance(holderB);
       await hapi.getHbarBalance(holderA);
 
-      // need to grant kyc from the account which is the kyc key a.k.a tokenCreateCustomContract
-      //should work witho another contract if token keys are updated
-      const grantKycSigner1FeeToken =
-        await tokenCreateCustomContract.grantTokenKycPublic(feeToken, holderA);
-      await grantKycSigner1FeeToken.wait();
+      // The holder has to be associated with the fee token before KYC can be
+      // granted on it; that association used to come from utils.associateToken
+      // reaching the signers, which needed their keys to include the contract.
+      await utils.associateAndGrantKyc(tokenCreateCustomContract, feeToken, [
+        holderA,
+      ]);
 
       // ---------- send fee token to signer 1 ------------
 
@@ -3025,11 +3026,12 @@ describe('TokenManagmentContract Test Suite', function () {
       expect(tokenInfoResponse[0][7][0][4]).to.equal(true);
       expect(updateFeeResponseCode).to.equal(TX_SUCCESS_CODE);
 
-      // need to grant kyc from the account which is the kyc key a.k.a tokenCreateCustomContract
-      //should work witho another contract if token keys are updated
-      const grantKycSigner1FeeToken =
-        await tokenCreateCustomContract.grantTokenKycPublic(feeToken, holderA);
-      await grantKycSigner1FeeToken.wait();
+      // The holder has to be associated with the fee token before KYC can be
+      // granted on it; that association used to come from utils.associateToken
+      // reaching the signers, which needed their keys to include the contract.
+      await utils.associateAndGrantKyc(tokenCreateCustomContract, feeToken, [
+        holderA,
+      ]);
 
       // ---------- send fee token to signer 1 ------------
 
