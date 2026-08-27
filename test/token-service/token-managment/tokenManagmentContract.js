@@ -36,7 +36,6 @@ describe('TokenManagmentContract Test Suite', function () {
   let holderC;
   let holderT;
   let holderS;
-  let holderAccountIdS;
   let tokenCreateCustomContractAddress;
   let tokenCreateContractAddress;
   let tokenTransferContractAddress;
@@ -130,18 +129,18 @@ describe('TokenManagmentContract Test Suite', function () {
     holderT = ethers.getAddress(
       (await hapi.createAccountWithContractIdKey(contractKeys)).address,
     );
-    // Holds the main suite's supply: the treasury is signers[0] (one test
-    // asserts that burning reduces the treasury balance) and the contracts
-    // cannot debit it, so a seeded contract-keyed account is the source of every
-    // transfer the tests make.
-    const holderAccountS =
-      await hapi.createAccountWithContractIdKey(contractKeys);
-    holderAccountIdS = holderAccountS.accountId;
-    holderS = ethers.getAddress(holderAccountS.address);
+    // Treasury of the main suite's tokens. It has to be an account the
+    // contracts may act for: updateTokenInfo carries the treasury field and so
+    // needs its authorization, and it is the source of every transfer the tests
+    // make. signers[0] can be neither now that it is not re-keyed, so it only
+    // signs token creates (as the admin key) and pays for every transaction.
+    holderS = ethers.getAddress(
+      (await hapi.createAccountWithContractIdKey(contractKeys)).address,
+    );
     erc20Contract = await utils.deployERC20Contract();
     tokenAddress = await utils.createFungibleTokenWithSECP256K1AdminKey(
       tokenCreateContract,
-      signers[0].address,
+      holderS,
       utils.getSignerCompressedPublicKey(),
     );
     await hapi.updateTokenKeys(tokenAddress, [
@@ -152,7 +151,7 @@ describe('TokenManagmentContract Test Suite', function () {
     ]);
     nftTokenAddress = await utils.createNonFungibleTokenWithSECP256K1AdminKey(
       tokenCreateContract,
-      signers[0].address,
+      holderS,
       utils.getSignerCompressedPublicKey(),
     );
     await hapi.updateTokenKeys(nftTokenAddress, [
@@ -182,21 +181,15 @@ describe('TokenManagmentContract Test Suite', function () {
     // keys include it), then seeded from the treasury with a native transfer
     // signers[0] signs itself — the contracts cannot debit the treasury.
     await utils.associateAndGrantKyc(tokenCreateContract, tokenAddress, [
-      holderS,
       holderA,
       holderB,
       holderC,
     ]);
     await utils.associateAndGrantKyc(tokenCreateContract, nftTokenAddress, [
-      holderS,
       holderA,
       holderB,
       holderC,
     ]);
-    await hapi.transferFromSigner(0, holderAccountIdS, {
-      tokens: [{ token: tokenAddress, amount: 100000 }],
-      nfts: [{ token: nftTokenAddress, serials: [mintedTokenSerialNumber] }],
-    });
   });
 
   after(function () {
@@ -207,7 +200,7 @@ describe('TokenManagmentContract Test Suite', function () {
     const newTokenAddress =
       await utils.createFungibleTokenWithSECP256K1AdminKey(
         tokenCreateContract,
-        signers[0].address,
+        holderS,
         utils.getSignerCompressedPublicKey(),
       );
     await hapi.updateTokenKeys(newTokenAddress, [
@@ -406,7 +399,7 @@ describe('TokenManagmentContract Test Suite', function () {
       name: TOKEN_UPDATE_NAME,
       symbol: TOKEN_UPDATE_SYMBOL,
       memo: TOKEN_UPDATE_MEMO,
-      treasury: signers[0].address, // treasury has to be the signing account,
+      treasury: holderS, // must be an account the contract may act for
       tokenSupplyType: tokenInfoBefore.tokenSupplyType,
       maxSupply: tokenInfoBefore.maxSupply,
       freezeDefault: tokenInfoBefore.freezeDefault,
@@ -567,16 +560,13 @@ describe('TokenManagmentContract Test Suite', function () {
   it('should be able to burn token', async function () {
     const amount = BigInt(111);
     const totalSupplyBefore = await erc20Contract.totalSupply(tokenAddress);
-    const balanceBefore = await erc20Contract.balanceOf(
-      tokenAddress,
-      signers[0].address,
-    );
+    const balanceBefore = await erc20Contract.balanceOf(tokenAddress, holderS);
     await tokenManagmentContract.burnTokenPublic(tokenAddress, amount, []);
 
     const balanceAfter = await pollForNewERC20Balance(
       erc20Contract,
       tokenAddress,
-      signers[0].address,
+      holderS,
       balanceBefore,
     );
     const totalSupplyAfter = await erc20Contract.totalSupply(tokenAddress);
@@ -708,7 +698,7 @@ describe('TokenManagmentContract Test Suite', function () {
       before(async function () {
         tokenAddress = await utils.createFungibleTokenWithSECP256K1AdminKey(
           tokenCreateContract,
-          signers[0].address,
+          holderS,
           utils.getSignerCompressedPublicKey(),
         );
         await hapi.updateTokenKeys(tokenAddress, [
@@ -725,6 +715,13 @@ describe('TokenManagmentContract Test Suite', function () {
           Constants.Contract.TokenCreateContract,
         );
         await utils.grantTokenKyc(tokenCreateContract, tokenAddress);
+        // These blocks replace the shared token, so the holders have to be
+        // associated to the new one as well — utils.associateToken only reaches
+        // the contract itself now.
+        await utils.associateAndGrantKyc(tokenCreateContract, tokenAddress, [
+          holderA,
+          holderB,
+        ]);
       });
 
       it('should be able to change PAUSE key to contractId and pause the token with same contract', async function () {
@@ -740,7 +737,7 @@ describe('TokenManagmentContract Test Suite', function () {
             name: tokenInfoBefore.name,
             symbol: tokenInfoBefore.symbol,
             memo: tokenInfoBefore.memo,
-            treasury: signers[0].address, // treasury has to be the signing account,
+            treasury: holderS, // must be an account the contract may act for
             tokenSupplyType: tokenInfoBefore.tokenSupplyType,
             maxSupply: tokenInfoBefore.maxSupply,
             freezeDefault: tokenInfoBefore.freezeDefault,
@@ -802,7 +799,7 @@ describe('TokenManagmentContract Test Suite', function () {
             name: tokenInfoBefore.name,
             symbol: tokenInfoBefore.symbol,
             memo: tokenInfoBefore.memo,
-            treasury: signers[0].address, // treasury has to be the signing account,
+            treasury: holderS, // must be an account the contract may act for
             tokenSupplyType: tokenInfoBefore.tokenSupplyType,
             maxSupply: tokenInfoBefore.maxSupply,
             freezeDefault: tokenInfoBefore.freezeDefault,
@@ -814,7 +811,7 @@ describe('TokenManagmentContract Test Suite', function () {
             },
           };
 
-          tokenAfter.treasury = signers[0].address;
+          tokenAfter.treasury = holderS;
           await updateTokenInfo(
             tokenManagmentContract,
             tokenAddress,
@@ -848,7 +845,7 @@ describe('TokenManagmentContract Test Suite', function () {
             name: tokenInfoBefore.name,
             symbol: tokenInfoBefore.symbol,
             memo: tokenInfoBefore.memo,
-            treasury: signers[0].address, // treasury has to be the signing account,
+            treasury: holderS, // must be an account the contract may act for
             tokenSupplyType: tokenInfoBefore.tokenSupplyType,
             maxSupply: tokenInfoBefore.maxSupply,
             freezeDefault: tokenInfoBefore.freezeDefault,
@@ -909,7 +906,7 @@ describe('TokenManagmentContract Test Suite', function () {
             name: tokenInfoBefore.name,
             symbol: tokenInfoBefore.symbol,
             memo: tokenInfoBefore.memo,
-            treasury: signers[0].address, // treasury has to be the signing account,
+            treasury: holderS, // must be an account the contract may act for
             tokenSupplyType: tokenInfoBefore.tokenSupplyType,
             maxSupply: tokenInfoBefore.maxSupply,
             freezeDefault: tokenInfoBefore.freezeDefault,
@@ -921,7 +918,7 @@ describe('TokenManagmentContract Test Suite', function () {
             },
           };
 
-          tokenAfter.treasury = signers[0].address;
+          tokenAfter.treasury = holderS;
           await updateTokenInfo(
             tokenManagmentContract,
             tokenAddress,
@@ -960,7 +957,7 @@ describe('TokenManagmentContract Test Suite', function () {
             name: tokenInfoBefore.name,
             symbol: tokenInfoBefore.symbol,
             memo: tokenInfoBefore.memo,
-            treasury: signers[0].address, // treasury has to be the signing account,
+            treasury: holderS, // must be an account the contract may act for
             tokenSupplyType: tokenInfoBefore.tokenSupplyType,
             maxSupply: tokenInfoBefore.maxSupply,
             freezeDefault: tokenInfoBefore.freezeDefault,
@@ -972,7 +969,7 @@ describe('TokenManagmentContract Test Suite', function () {
             },
           };
 
-          token.treasury = signers[0].address;
+          token.treasury = holderS;
 
           await updateTokenInfo(tokenManagmentContract, tokenAddress, token);
         }
@@ -1037,7 +1034,7 @@ describe('TokenManagmentContract Test Suite', function () {
             name: tokenInfoBefore.name,
             symbol: tokenInfoBefore.symbol,
             memo: tokenInfoBefore.memo,
-            treasury: signers[0].address, // treasury has to be the signing account,
+            treasury: holderS, // must be an account the contract may act for
             tokenSupplyType: tokenInfoBefore.tokenSupplyType,
             maxSupply: tokenInfoBefore.maxSupply,
             freezeDefault: tokenInfoBefore.freezeDefault,
@@ -1049,7 +1046,7 @@ describe('TokenManagmentContract Test Suite', function () {
             },
           };
 
-          tokenAfter.treasury = signers[0].address;
+          tokenAfter.treasury = holderS;
           await updateTokenInfo(
             tokenManagmentContract,
             tokenAddress,
@@ -1091,7 +1088,7 @@ describe('TokenManagmentContract Test Suite', function () {
             name: tokenInfoBefore.name,
             symbol: tokenInfoBefore.symbol,
             memo: tokenInfoBefore.memo,
-            treasury: signers[0].address, // treasury has to be the signing account,
+            treasury: holderS, // must be an account the contract may act for
             tokenSupplyType: tokenInfoBefore.tokenSupplyType,
             maxSupply: tokenInfoBefore.maxSupply,
             freezeDefault: tokenInfoBefore.freezeDefault,
@@ -1103,7 +1100,7 @@ describe('TokenManagmentContract Test Suite', function () {
             },
           };
 
-          token.treasury = signers[0].address;
+          token.treasury = holderS;
 
           await updateTokenInfo(tokenManagmentContract, tokenAddress, token);
         }
@@ -1171,7 +1168,7 @@ describe('TokenManagmentContract Test Suite', function () {
       before(async function () {
         tokenAddress = await utils.createFungibleTokenWithSECP256K1AdminKey(
           tokenCreateContract,
-          signers[0].address,
+          holderS,
           utils.getSignerCompressedPublicKey(),
         );
 
@@ -1191,6 +1188,13 @@ describe('TokenManagmentContract Test Suite', function () {
         );
 
         await utils.grantTokenKyc(tokenCreateContract, tokenAddress);
+        // This block replaces the shared token, so the holders have to be
+        // associated to the new one as well — utils.associateToken only
+        // reaches the contract itself now.
+        await utils.associateAndGrantKyc(tokenCreateContract, tokenAddress, [
+          holderA,
+          holderB,
+        ]);
       });
       describe('Positive', function () {
         it('should be able to change PAUSE key to ECDSA_secp256k and pause the token with the same account', async function () {
@@ -1388,7 +1392,7 @@ describe('TokenManagmentContract Test Suite', function () {
         before(async function () {
           tokenAddress = await utils.createFungibleTokenWithSECP256K1AdminKey(
             tokenCreateContract,
-            signers[0].address,
+            holderS,
             utils.getSignerCompressedPublicKey(),
           );
         });
@@ -1417,6 +1421,13 @@ describe('TokenManagmentContract Test Suite', function () {
             Constants.Contract.TokenCreateContract,
           );
           await utils.grantTokenKyc(tokenCreateContract, tokenAddress);
+          // This block replaces the shared token, so the holders have to be
+          // associated to the new one as well — utils.associateToken only
+          // reaches the contract itself now.
+          await utils.associateAndGrantKyc(tokenCreateContract, tokenAddress, [
+            holderA,
+            holderB,
+          ]);
 
           await tokenTransferContract.transferTokensPublic(
             tokenAddress,

@@ -108,7 +108,20 @@ class Utils {
   }
 
   static async getTokenAddress(tx) {
-    const receipt = await tx.wait();
+    let receipt;
+    try {
+      receipt = await tx.wait();
+    } catch (err) {
+      // [diag] strip once Token Management is green. The create helpers revert
+      // with no reason, so name the HTS code behind it.
+      console.log(
+        '[diag] token create reverted, hts code =',
+        await Utils.getHTSResponseCode(tx.hash).catch(
+          (e) => `unavailable (${e.message})`,
+        ),
+      );
+      throw err;
+    }
     const { tokenAddress } = receipt.logs.filter(
       (e) => e.fragment.name === Constants.Events.CreatedToken,
     )[0].args;
@@ -504,19 +517,17 @@ class Utils {
     );
   }
 
-  // KYC can only be granted to an account already associated with the token.
-  // signers[1] is no longer associated through the contract (that needed the
-  // account's key to include it), so granting to it reverts — and because these
-  // calls carry no explicit gas limit, ethers estimates gas first and the revert
-  // surfaces immediately rather than being swallowed. Callers that need KYC for
-  // other accounts associate and grant those explicitly.
+  // Grants KYC to the calling contract only. KYC can only be granted to an
+  // account already associated with the token, and the signers are no longer
+  // associated through the contract — that needed their keys to include it.
+  // These calls carry no explicit gas limit, so ethers estimates gas first and
+  // any revert surfaces immediately instead of being swallowed. Callers that
+  // need KYC for other accounts associate and grant those explicitly.
   static async grantTokenKyc(contract, tokenAddress) {
-    const signers = await ethers.getSigners();
     await contract.grantTokenKycPublic(
       tokenAddress,
       await contract.getAddress(),
     );
-    await contract.grantTokenKycPublic(tokenAddress, signers[0].address);
   }
 
   // [diag] Walk the error's cause chain and surface the relay's JSON-RPC body /
