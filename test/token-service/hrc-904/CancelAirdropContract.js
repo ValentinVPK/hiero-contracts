@@ -41,15 +41,21 @@ describe('HIP904Batch2 CancelAirdropContract Test Suite', function () {
     erc721Contract = await utils.deployContract(
       Constants.Contract.ERC721Contract,
     );
-    owner = signers[0].address;
-
     contractAddresses = [
       await airdropContract.getAddress(),
       await tokenCreateContract.getAddress(),
       await cancelAirdropContract.getAddress(),
     ];
 
-    await hapi.updateAccountKeys(contractAddresses);
+    // Relay model: no account re-keying. Both contracts act on the airdrop
+    // sender's behalf — Airdrop debits it, CancelAirdrop cancels its pending
+    // airdrops — so its key has to include them, which rules out a hardhat
+    // signer that still sends EthereumTransactions. Use a contract-keyed
+    // account that only ever acts as a subject; it is also the treasury of
+    // every token created here, so it holds the supply without seeding.
+    owner = ethers.getAddress(
+      (await hapi.createAccountWithContractIdKey(contractAddresses)).address,
+    );
 
     await utils.setupToken(tokenCreateContract, owner, contractAddresses, hapi);
 
@@ -80,7 +86,7 @@ describe('HIP904Batch2 CancelAirdropContract Test Suite', function () {
 
   it('should cancel a single pending fungible token airdrop', async function () {
     const ftAmount = BigInt(1);
-    const sender = signers[0].address;
+    const sender = owner;
     const tokenAddress = await utils.setupToken(
       tokenCreateContract,
       owner,
@@ -121,7 +127,7 @@ describe('HIP904Batch2 CancelAirdropContract Test Suite', function () {
   });
 
   it('should cancel a single pending NFT airdrop', async function () {
-    const sender = signers[0].address;
+    const sender = owner;
     const nftTokenAddress = await utils.setupNft(
       tokenCreateContract,
       owner,
