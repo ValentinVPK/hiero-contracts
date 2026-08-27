@@ -30,8 +30,8 @@ defaults:
     shell: bash
 
 jobs:
-  HIP904Batch2:
-    name: HIP904 Contract Test Suite Batch 2
+  HIP904Batch3:
+    name: HIP904 Contract Test Suite Batch 3
     uses: ./.github/workflows/test-workflow.yml
     with:
-      testfilter: HIP904Batch2
+      testfilter: HIP904Batch3

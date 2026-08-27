@@ -44,7 +44,13 @@ class Hapi {
   // account (associate/dissociate/transfer on its behalf) while the account
   // itself never sends a transaction — so it stays a valid subject under v0.77
   // without re-keying an EOA sender. Returns its long-zero EVM address.
-  async createAccountWithContractIdKey(contractAddresses, initialHbar = 20) {
+  // maxAutoAssociations defaults to 0, so airdrops to the account stay pending
+  // unless a caller asks for slots (-1 = unlimited, per HIP-904).
+  async createAccountWithContractIdKey(
+    contractAddresses,
+    initialHbar = 20,
+    maxAutoAssociations = 0,
+  ) {
     const accountKey = PrivateKey.generateECDSA();
     const keyList = new KeyList(
       [
@@ -58,6 +64,7 @@ class Hapi {
     const response = await new AccountCreateTransaction()
       .setKey(keyList)
       .setInitialBalance(new Hbar(initialHbar))
+      .setMaxAutomaticTokenAssociations(maxAutoAssociations)
       .execute(this.client);
     const receipt = await response.getReceipt(this.client);
     return {
