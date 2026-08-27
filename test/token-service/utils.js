@@ -720,10 +720,17 @@ class Utils {
   }
 
   static async setupNft(tokenCreateContract, owner, contractAddresses, hapi) {
-    const nftTokenAddress = await this.createNonFungibleTokenWithoutKYC(
-      tokenCreateContract,
-      owner,
-    );
+    // Relay model: no account re-keying, so the create must be authorized by
+    // the treasury's own signature — hence the SECP256K1-admin-key variant with
+    // signer0's public key (a WithoutKYC/INHERIT create with an EOA treasury
+    // reverts, and its contract-id admin key would also block the
+    // updateTokenKeys below, which signer0 signs).
+    const nftTokenAddress =
+      await this.createNonFungibleTokenWithSECP256K1AdminKeyWithoutKYC(
+        tokenCreateContract,
+        owner,
+        this.getSignerCompressedPublicKey(),
+      );
 
     await hapi.updateTokenKeys(
       nftTokenAddress,

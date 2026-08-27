@@ -6,7 +6,6 @@ import hre from 'hardhat';
 
 import Constants from '../../constants';
 const { ethers } = await hre.network.connect();
-import hapi from '../hapi';
 import utils from '../utils';
 
 describe('@HRC-719 Test Suite', function () {
@@ -31,7 +30,6 @@ describe('@HRC-719 Test Suite', function () {
   before(async function () {
     signers = await ethers.getSigners();
     tokenCreateContract = await utils.deployTokenCreateContract();
-    await hapi.updateAccountKeys([await tokenCreateContract.getAddress()]);
 
     hrc719Contract = await utils.deployHRC719Contract();
 
@@ -41,21 +39,20 @@ describe('@HRC-719 Test Suite', function () {
   });
 
   beforeEach(async () => {
-    // create new tokenAddress for every unit test
-    tokenAddress = await utils.createFungibleToken(
+    // Create a new tokenAddress for every unit test. Relay model: no account
+    // re-keying, so the token is created with signer0's own ECDSA key as admin
+    // and signer0 as treasury — signer0 signs the create, which authorizes the
+    // EOA treasury (an INHERIT-key create with an EOA treasury reverts). No
+    // updateTokenKeys either: this suite only associates/dissociates, which is
+    // not gated by any token key.
+    tokenAddress = await utils.createFungibleTokenWithSECP256K1AdminKey(
       tokenCreateContract,
       signers[0].address,
+      utils.getSignerCompressedPublicKey(),
     );
-    await hapi.updateTokenKeys(tokenAddress, [
-      await tokenCreateContract.getAddress(),
-    ]);
 
     // create a contract object for the token
     hrcToken = new Contract(tokenAddress, IHRC719, signers[0]);
-  });
-
-  after(function () {
-    hapi.client.close();
   });
 
   describe('HRC719 wrapper contract', () => {

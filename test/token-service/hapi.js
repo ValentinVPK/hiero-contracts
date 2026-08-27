@@ -13,6 +13,7 @@ import {
   KeyList,
   NftId,
   PrivateKey,
+  TokenAirdropTransaction,
   TokenAssociateTransaction,
   TokenCreateTransaction,
   TokenId,
@@ -93,6 +94,51 @@ class Hapi {
           new NftId(TokenId.fromSolidityAddress(token), serial),
           senderId,
           receiverAccountId,
+        );
+      }
+    }
+
+    const response = await (
+      await tx.freezeWith(this.client).sign(pkSigners[senderIndex])
+    ).execute(this.client);
+    await response.getReceipt(this.client);
+    this.client.setOperator(config.operatorId, config.operatorKey);
+  }
+
+  // Airdrop tokens / NFT serials from a hardhat signer with a native HAPI
+  // airdrop the sender signs itself. The Airdrop contract leaves isApproval
+  // false, so a contract-driven airdrop would need the sender's key to include
+  // that contract — impossible for an account that must also send
+  // EthereumTransactions. Suites where the airdrop sender is also the account
+  // cancelling/being claimed from (the IHRC904 facades take msg.sender as the
+  // airdrop sender) create the pending airdrop through here instead.
+  async airdropFromSigner(
+    senderIndex,
+    receiverAddress,
+    { tokens = [], nfts = [] },
+  ) {
+    const signers = await connection.ethers.getSigners();
+    const pkSigners = (await utils.getHardhatSignersPrivateKeys()).map((pk) =>
+      PrivateKey.fromStringECDSA(pk),
+    );
+    const senderId = await this.getAccountId(signers[senderIndex].address);
+    const receiverId = await this.getAccountId(receiverAddress);
+    this.client.setOperator(senderId, pkSigners[senderIndex]);
+
+    // amounts/serials arrive as either Number or BigInt from the tests; the SDK
+    // takes Long-compatible numbers, so normalize.
+    const tx = new TokenAirdropTransaction();
+    for (const { token, amount } of tokens) {
+      const tokenId = TokenId.fromSolidityAddress(token);
+      tx.addTokenTransfer(tokenId, senderId, -Number(amount));
+      tx.addTokenTransfer(tokenId, receiverId, Number(amount));
+    }
+    for (const { token, serials } of nfts) {
+      for (const serial of serials) {
+        tx.addNftTransfer(
+          new NftId(TokenId.fromSolidityAddress(token), Number(serial)),
+          senderId,
+          receiverId,
         );
       }
     }

@@ -30,8 +30,8 @@ defaults:
     shell: bash
 
 jobs:
-  TokenTransferContract:
-    name: Token Transfer Test Suite
+  HRC:
+    name: HRC Test Suite
     uses: ./.github/workflows/test-workflow.yml
     with:
-      testfilter: TokenTransferContract
+      testfilter: HRC

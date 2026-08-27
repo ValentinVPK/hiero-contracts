@@ -51,11 +51,13 @@ describe('HIP904Batch2 IHRC904Facade Contract Test Suite', function () {
       Constants.Contract.ERC721Contract,
     );
 
-    await hapi.updateAccountKeys([
-      await airdropContract.getAddress(),
-      await tokenCreateContract.getAddress(),
-    ]);
-
+    // Relay model: no account re-keying. The facades take msg.sender as the
+    // airdrop sender, so the sender has to be a plain-ECDSA account that can
+    // send EthereumTransactions (signers[0]) — which in turn means the pending
+    // airdrops it owns cannot be created through the Airdrop contract (that
+    // would need signers[0]'s key to include the contract). They are created
+    // with a native airdrop signers[0] signs itself instead; the Airdrop
+    // contract itself is covered by the HIP904Batch1 suite.
     contractAddresses = [
       await airdropContract.getAddress(),
       await tokenCreateContract.getAddress(),
@@ -134,17 +136,9 @@ describe('HIP904Batch2 IHRC904Facade Contract Test Suite', function () {
       receiver.address,
     );
 
-    const airdrop = await airdropContract.tokenAirdrop(
-      tokenAddress,
-      owner,
-      receiver.address,
-      BigInt(1),
-      {
-        value: Constants.ONE_HBAR,
-        gasLimit: 2_000_000,
-      },
-    );
-    await airdrop.wait();
+    await hapi.airdropFromSigner(0, receiver.address, {
+      tokens: [{ token: tokenAddress, amount: 1 }],
+    });
     const tx = await walletIHRC904TokenFacadeSender.cancelAirdropFT(
       receiver.address,
     );
@@ -164,17 +158,9 @@ describe('HIP904Batch2 IHRC904Facade Contract Test Suite', function () {
       nftTokenAddress,
     );
 
-    const airdrop = await airdropContract.nftAirdrop(
-      nftTokenAddress,
-      owner,
-      receiver.address,
-      mintedTokenSerialNumber,
-      {
-        value: Constants.ONE_HBAR,
-        gasLimit: 2_000_000,
-      },
-    );
-    await airdrop.wait();
+    await hapi.airdropFromSigner(0, receiver.address, {
+      nfts: [{ token: nftTokenAddress, serials: [mintedTokenSerialNumber] }],
+    });
 
     const tx = await walletIHRC904NftFacadeSender.cancelAirdropNFT(
       receiver.address,
@@ -228,17 +214,9 @@ describe('HIP904Batch2 IHRC904Facade Contract Test Suite', function () {
     );
     const amount = BigInt(1);
 
-    const airdrop = await airdropContract.tokenAirdrop(
-      tokenAddress,
-      owner,
-      receiver.address,
-      amount,
-      {
-        value: Constants.ONE_HBAR,
-        gasLimit: 2_000_000,
-      },
-    );
-    await airdrop.wait();
+    await hapi.airdropFromSigner(0, receiver.address, {
+      tokens: [{ token: tokenAddress, amount }],
+    });
     await hapi.associateWithSigner(receiverPrivateKey, tokenAddress);
 
     const tx = await walletIHRC904TokenFacadeReceiver.claimAirdropFT(owner);
@@ -259,17 +237,9 @@ describe('HIP904Batch2 IHRC904Facade Contract Test Suite', function () {
       tokenCreateContract,
       nftTokenAddress,
     );
-    const airdrop = await airdropContract.nftAirdrop(
-      nftTokenAddress,
-      owner,
-      receiver.address,
-      mintedTokenSerialNumber,
-      {
-        value: Constants.ONE_HBAR,
-        gasLimit: 2_000_000,
-      },
-    );
-    await airdrop.wait();
+    await hapi.airdropFromSigner(0, receiver.address, {
+      nfts: [{ token: nftTokenAddress, serials: [mintedTokenSerialNumber] }],
+    });
 
     const tx = await walletIHRC904NftFacadeReceiver.claimAirdropNFT(
       owner,
@@ -286,17 +256,9 @@ describe('HIP904Batch2 IHRC904Facade Contract Test Suite', function () {
   });
 
   it('should reject tokens for a given account (FT)', async function () {
-    const airdrop = await airdropContract.tokenAirdrop(
-      tokenAddress,
-      owner,
-      receiver.address,
-      BigInt(1),
-      {
-        value: Constants.ONE_HBAR,
-        gasLimit: 2_000_000,
-      },
-    );
-    await airdrop.wait();
+    await hapi.airdropFromSigner(0, receiver.address, {
+      tokens: [{ token: tokenAddress, amount: 1 }],
+    });
     const tx = await walletIHRC904TokenFacadeReceiver.rejectTokenFT();
     const responseCode = await utils.getHTSResponseCode(tx.hash);
     expect(responseCode).to.eq('22');
@@ -313,17 +275,9 @@ describe('HIP904Batch2 IHRC904Facade Contract Test Suite', function () {
       tokenCreateContract,
       nftTokenAddress,
     );
-    const airdrop = await airdropContract.nftAirdrop(
-      nftTokenAddress,
-      owner,
-      signers[1].address,
-      mintedTokenSerialNumber,
-      {
-        value: Constants.ONE_HBAR,
-        gasLimit: 2_000_000,
-      },
-    );
-    await airdrop.wait();
+    await hapi.airdropFromSigner(0, signers[1].address, {
+      nfts: [{ token: nftTokenAddress, serials: [mintedTokenSerialNumber] }],
+    });
 
     const IHRC904TokenFacade = new ethers.Interface(
       (await hre.artifacts.readArtifact('IHRC904TokenFacade')).abi,
@@ -362,19 +316,9 @@ describe('HIP904Batch2 IHRC904Facade Contract Test Suite', function () {
     }
     serialNumbers = serialNumbers.map(BigInt);
 
-    for (const serialNumber of serialNumbers) {
-      const airdrop = await airdropContract.nftAirdrop(
-        nftTokenAddress,
-        owner,
-        signers[1].address,
-        serialNumber,
-        {
-          value: Constants.ONE_HBAR,
-          gasLimit: 2_000_000,
-        },
-      );
-      await airdrop.wait();
-    }
+    await hapi.airdropFromSigner(0, signers[1].address, {
+      nfts: [{ token: nftTokenAddress, serials: serialNumbers }],
+    });
 
     const IHRC904TokenFacade = new ethers.Interface(
       (await hre.artifacts.readArtifact('IHRC904TokenFacade')).abi,
