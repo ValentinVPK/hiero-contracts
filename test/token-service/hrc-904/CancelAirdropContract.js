@@ -15,6 +15,7 @@ describe('HIP904Batch2 CancelAirdropContract Test Suite', function () {
   let erc721Contract;
   let signers;
   let owner;
+  let senderWithoutAirdrops;
   let receiver;
   let contractAddresses;
 
@@ -54,6 +55,15 @@ describe('HIP904Batch2 CancelAirdropContract Test Suite', function () {
     // account that only ever acts as a subject; it is also the treasury of
     // every token created here, so it holds the supply without seeding.
     owner = ethers.getAddress(
+      (await hapi.createAccountWithContractIdKey(contractAddresses)).address,
+    );
+    // A second contract-keyed account that never gets an airdrop. The cancel is
+    // authorized against the sender before the pending airdrop is looked up, so
+    // an ordinary signer here fails with INVALID_FULL_PREFIX_SIGNATURE_FOR_
+    // PRECOMPILE (326) instead of the INVALID_PENDING_AIRDROP_ID the test is
+    // after. (A never-created address still reaches 367 — there is no account to
+    // authorize — which is why the invalid-sender test needs no such account.)
+    senderWithoutAirdrops = ethers.getAddress(
       (await hapi.createAccountWithContractIdKey(contractAddresses)).address,
     );
 
@@ -200,7 +210,7 @@ describe('HIP904Batch2 CancelAirdropContract Test Suite', function () {
   });
 
   it('should fail when sender has no pending airdrops', async function () {
-    const sender = signers[1].address;
+    const sender = senderWithoutAirdrops;
     const tokenAddress = await utils.setupToken(
       tokenCreateContract,
       owner,
