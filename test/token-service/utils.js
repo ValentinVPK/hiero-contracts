@@ -423,46 +423,9 @@ class Utils {
   // Add Token association via hedera.js sdk
   // Client with signer - my private key example
 
-  // Under the v0.77 security model a re-keyed (KeyList) account can no longer send
-  // an EthereumTransaction, so when txSigner is supplied the per-account associate
-  // calls are sent by it instead of the (re-keyed) signers. The account being
-  // associated is still signers[N] — it stays a subject, referenced by address.
-  static async associateToken(contract, tokenAddress, contractName) {
-    const signers = await ethers.getSigners();
-    const associateTx1 = await ethers.getContractAt(
-      contractName,
-      await contract.getAddress(),
-      signers[0],
-    );
-    const associateTx2 = await ethers.getContractAt(
-      contractName,
-      await contract.getAddress(),
-      signers[1],
-    );
-
-    const associateTx3 = await ethers.getContractAt(
-      contractName,
-      await contract.getAddress(),
-      signers[2],
-    );
-
+  static async associateToken(contract, tokenAddress) {
     await contract.associateTokenPublic(
       await contract.getAddress(),
-      tokenAddress,
-      Constants.GAS_LIMIT_1_000_000,
-    );
-    await associateTx1.associateTokenPublic(
-      signers[0].address,
-      tokenAddress,
-      Constants.GAS_LIMIT_1_000_000,
-    );
-    await associateTx2.associateTokenPublic(
-      signers[1].address,
-      tokenAddress,
-      Constants.GAS_LIMIT_1_000_000,
-    );
-    await associateTx3.associateTokenPublic(
-      signers[2].address,
       tokenAddress,
       Constants.GAS_LIMIT_1_000_000,
     );

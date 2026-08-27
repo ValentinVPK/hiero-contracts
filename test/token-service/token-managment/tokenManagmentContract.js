@@ -160,17 +160,9 @@ describe('TokenManagmentContract Test Suite', function () {
       await tokenManagmentContract.getAddress(),
       await tokenQueryContract.getAddress(),
     ]);
-    await utils.associateToken(
-      tokenCreateContract,
-      tokenAddress,
-      Constants.Contract.TokenCreateContract,
-    );
+    await utils.associateToken(tokenCreateContract, tokenAddress);
     await utils.grantTokenKyc(tokenCreateContract, tokenAddress);
-    await utils.associateToken(
-      tokenCreateContract,
-      nftTokenAddress,
-      Constants.Contract.TokenCreateContract,
-    );
+    await utils.associateToken(tokenCreateContract, nftTokenAddress);
     await utils.grantTokenKyc(tokenCreateContract, nftTokenAddress);
     mintedTokenSerialNumber = await utils.mintNFT(
       tokenCreateContract,
@@ -709,11 +701,7 @@ describe('TokenManagmentContract Test Suite', function () {
         ]);
         tokenInfoBefore = await getTokenInfo(tokenQueryContract, tokenAddress);
 
-        await utils.associateToken(
-          tokenCreateContract,
-          tokenAddress,
-          Constants.Contract.TokenCreateContract,
-        );
+        await utils.associateToken(tokenCreateContract, tokenAddress);
         await utils.grantTokenKyc(tokenCreateContract, tokenAddress);
         // These blocks replace the shared token, so the holders have to be
         // associated to the new one as well — utils.associateToken only reaches
@@ -1181,11 +1169,7 @@ describe('TokenManagmentContract Test Suite', function () {
 
         tokenInfoBefore = await getTokenInfo(tokenQueryContract, tokenAddress);
 
-        await utils.associateToken(
-          tokenCreateContract,
-          tokenAddress,
-          Constants.Contract.TokenCreateContract,
-        );
+        await utils.associateToken(tokenCreateContract, tokenAddress);
 
         await utils.grantTokenKyc(tokenCreateContract, tokenAddress);
         // This block replaces the shared token, so the holders have to be
@@ -1415,11 +1399,7 @@ describe('TokenManagmentContract Test Suite', function () {
             await tokenCreateContract.getAddress(),
           ]);
 
-          await utils.associateToken(
-            tokenCreateContract,
-            tokenAddress,
-            Constants.Contract.TokenCreateContract,
-          );
+          await utils.associateToken(tokenCreateContract, tokenAddress);
           await utils.grantTokenKyc(tokenCreateContract, tokenAddress);
           // This block replaces the shared token, so the holders have to be
           // associated to the new one as well — utils.associateToken only
@@ -2119,11 +2099,7 @@ describe('TokenManagmentContract Test Suite', function () {
         false,
         holderC,
       );
-      await utils.associateToken(
-        tokenCreateCustomContract,
-        feeToken2,
-        Constants.Contract.TokenCreateContract,
-      );
+      await utils.associateToken(tokenCreateCustomContract, feeToken2);
       // The fee collector has to be associated with the token a fixed fee is
       // denominated in, or the create fails with
       // TOKEN_NOT_ASSOCIATED_TO_FEE_COLLECTOR. utils.associateToken only
@@ -2254,11 +2230,7 @@ describe('TokenManagmentContract Test Suite', function () {
         false,
         holderC,
       );
-      await utils.associateToken(
-        tokenCreateCustomContract,
-        feeToken2,
-        Constants.Contract.TokenCreateContract,
-      );
+      await utils.associateToken(tokenCreateCustomContract, feeToken2);
       // The fee collector has to be associated with the token a fixed fee is
       // denominated in, or the create fails with
       // TOKEN_NOT_ASSOCIATED_TO_FEE_COLLECTOR. utils.associateToken only
@@ -2393,11 +2365,7 @@ describe('TokenManagmentContract Test Suite', function () {
         false,
         holderC,
       );
-      await utils.associateToken(
-        tokenCreateCustomContract,
-        feeToken2,
-        Constants.Contract.TokenCreateCustomContract,
-      );
+      await utils.associateToken(tokenCreateCustomContract, feeToken2);
       // The fee collector has to be associated with the token a fixed fee is
       // denominated in, or the create fails with
       // TOKEN_NOT_ASSOCIATED_TO_FEE_COLLECTOR. utils.associateToken only
@@ -2787,11 +2755,7 @@ describe('TokenManagmentContract Test Suite', function () {
     });
 
     it('should be able to update fixed HTS fee for NFT', async function () {
-      await utils.associateToken(
-        tokenCreateCustomContract,
-        feeToken,
-        Constants.Contract.TokenCreateCustomContract,
-      );
+      await utils.associateToken(tokenCreateCustomContract, feeToken);
       // The fee collector has to be associated with the token a fixed fee is
       // denominated in, or the create fails with
       // TOKEN_NOT_ASSOCIATED_TO_FEE_COLLECTOR. utils.associateToken only
@@ -2912,11 +2876,7 @@ describe('TokenManagmentContract Test Suite', function () {
     });
 
     it('should be able to update fixed HTS fee and royalty fee in NFT', async function () {
-      await utils.associateToken(
-        tokenCreateCustomContract,
-        feeToken,
-        Constants.Contract.TokenCreateContract,
-      );
+      await utils.associateToken(tokenCreateCustomContract, feeToken);
       // The fee collector has to be associated with the token a fixed fee is
       // denominated in, or the create fails with
       // TOKEN_NOT_ASSOCIATED_TO_FEE_COLLECTOR. utils.associateToken only
