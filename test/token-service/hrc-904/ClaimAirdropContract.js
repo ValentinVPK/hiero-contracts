@@ -41,14 +41,6 @@ describe('HIP904Batch3 ClaimAirdropContract Test Suite', function () {
       await claimAirdropContract.getAddress(),
     ];
 
-    // Relay model: no account re-keying. Both sides of a claim are acted upon by
-    // a contract — Airdrop debits the sender, ClaimAirdrop claims on the
-    // receiver's behalf — so both keys have to include those contracts, which no
-    // hardhat signer can while it still sends EthereumTransactions. Both are
-    // therefore contract-keyed accounts that only act as subjects. The receiver
-    // is created with no automatic association slots, which is exactly what this
-    // suite wants (every airdrop to it stays pending) and is why it no longer
-    // needs to call setUnlimitedAutomaticAssociations(false) on itself.
     owner = ethers.getAddress(
       (await hapi.createAccountWithContractIdKey(contractAddresses)).address,
     );
@@ -58,9 +50,6 @@ describe('HIP904Batch3 ClaimAirdropContract Test Suite', function () {
 
     await utils.setupToken(tokenCreateContract, owner, contractAddresses, hapi);
 
-    // One test airdrops to signers[1] expecting the transfer to land straight
-    // away; it used to be associated to each token through the contract, which
-    // needed the re-key, so let it accept tokens automatically instead.
     const IHRC904AccountFacade = new ethers.Interface(
       (await hre.artifacts.readArtifact('IHRC904AccountFacade')).abi,
     );

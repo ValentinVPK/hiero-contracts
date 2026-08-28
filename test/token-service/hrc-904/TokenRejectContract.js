@@ -32,12 +32,6 @@ describe('HIP904Batch3 TokenRejectContract Test Suite', function () {
       await airdropContract.getAddress(),
     ];
 
-    // Relay model: no account re-keying. TokenReject rejects on the holder's
-    // behalf and Airdrop debits the sender, so every account either contract
-    // acts upon must have those contracts in its key — impossible for a hardhat
-    // signer that still sends EthereumTransactions. All of them are therefore
-    // contract-keyed accounts that only act as subjects; signers[0] keeps
-    // sending every transaction.
     const contractKeyedAccount = async (maxAutoAssociations) =>
       ethers.getAddress(
         (
@@ -51,14 +45,8 @@ describe('HIP904Batch3 TokenRejectContract Test Suite', function () {
 
     // Airdrop sender, and treasury of every token created here.
     owner = await contractKeyedAccount(0);
-    // Holders that reject: unlimited automatic associations, so an airdrop to
-    // them lands straight away and there is a balance to reject. They replace
-    // signers[1..2], which used to be associated to each token through the
-    // contract — that only worked while their keys included it.
     rejecter = await contractKeyedAccount(-1);
     secondRejecter = await contractKeyedAccount(-1);
-    // No association slots, so airdrops to it stay pending and it never holds
-    // the token — the case the not-associated test needs.
     pendingRejecter = await contractKeyedAccount(0);
   });
 
@@ -242,9 +230,6 @@ describe('HIP904Batch3 TokenRejectContract Test Suite', function () {
       hapi,
     );
 
-    // Associate without transferring anything: automatic association only fires
-    // on receipt, and an unassociated holder would fail with 184 before the
-    // balance is ever checked.
     await (
       await tokenCreateContract.associateTokenPublic(
         rejecter,

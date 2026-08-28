@@ -588,9 +588,6 @@ class Utils {
     const mirrorNodeUrl = Utils.getMirrorNodeUrl(networkName);
     const target = evmAddress.toLowerCase();
     const url = `${mirrorNodeUrl}/contracts/results/${txHash}/actions`;
-    // retriedGetRequest only retries on an HTTP error; a result that is present
-    // but whose actions have not been ingested yet answers 200 with an empty
-    // list, so wait that out too.
     let actions = [];
     for (let attempt = 0; attempt < 5 && !actions.length; attempt++) {
       if (attempt) await Utils.sleep(1000);
@@ -677,11 +674,6 @@ class Utils {
   }
 
   static async setupNft(tokenCreateContract, owner, contractAddresses, hapi) {
-    // Relay model: no account re-keying, so the create must be authorized by
-    // the treasury's own signature — hence the SECP256K1-admin-key variant with
-    // signer0's public key (a WithoutKYC/INHERIT create with an EOA treasury
-    // reverts, and its contract-id admin key would also block the
-    // updateTokenKeys below, which signer0 signs).
     const nftTokenAddress =
       await this.createNonFungibleTokenWithSECP256K1AdminKeyWithoutKYC(
         tokenCreateContract,
@@ -701,11 +693,6 @@ class Utils {
       false,
     );
 
-    // Only the contract's own association is meaningful now: the signers can no
-    // longer be associated through the contract (that needed the re-key) and
-    // they take tokens by auto-association instead. Those three per-token calls
-    // reverted and were silently swallowed, and at ~48 tokens per suite they
-    // cost enough wall clock to push the job past its timeout.
     await tokenCreateContract.associateTokenPublic(
       await tokenCreateContract.getAddress(),
       nftTokenAddress,
@@ -735,11 +722,6 @@ class Utils {
       false,
     );
 
-    // Only the contract's own association is meaningful now: the signers can no
-    // longer be associated through the contract (that needed the re-key) and
-    // they take tokens by auto-association instead. Those three per-token calls
-    // reverted and were silently swallowed, and at ~48 tokens per suite they
-    // cost enough wall clock to push the job past its timeout.
     await tokenCreateContract.associateTokenPublic(
       await tokenCreateContract.getAddress(),
       tokenAddress,

@@ -51,13 +51,6 @@ describe('HIP904Batch2 IHRC904Facade Contract Test Suite', function () {
       Constants.Contract.ERC721Contract,
     );
 
-    // Relay model: no account re-keying. The facades take msg.sender as the
-    // airdrop sender, so the sender has to be a plain-ECDSA account that can
-    // send EthereumTransactions (signers[0]) — which in turn means the pending
-    // airdrops it owns cannot be created through the Airdrop contract (that
-    // would need signers[0]'s key to include the contract). They are created
-    // with a native airdrop signers[0] signs itself instead; the Airdrop
-    // contract itself is covered by the HIP904Batch1 suite.
     contractAddresses = [
       await airdropContract.getAddress(),
       await tokenCreateContract.getAddress(),

@@ -39,12 +39,7 @@ describe('@HRC-719 Test Suite', function () {
   });
 
   beforeEach(async () => {
-    // Create a new tokenAddress for every unit test. Relay model: no account
-    // re-keying, so the token is created with signer0's own ECDSA key as admin
-    // and signer0 as treasury — signer0 signs the create, which authorizes the
-    // EOA treasury (an INHERIT-key create with an EOA treasury reverts). No
-    // updateTokenKeys either: this suite only associates/dissociates, which is
-    // not gated by any token key.
+    // create new tokenAddress for every unit test
     tokenAddress = await utils.createFungibleTokenWithSECP256K1AdminKey(
       tokenCreateContract,
       signers[0].address,

@@ -42,18 +42,12 @@ describe('TokenCreateContract Test Suite', function () {
       await tokenManagmentContract.getAddress(),
     ];
     const signer1Pk = utils.getHardhatSignerPrivateKeyByIndex(1);
-    // Relay model: no account re-keying. Tokens are created with signer0's own
-    // ECDSA admin key and signer0 as treasury — signer0 signs the create, so no
-    // re-key is needed — then updateTokenKeys hands the operational keys to the
-    // contracts. signer0 stays a plain-ECDSA sender and holder.
     tokenAddress = await utils.createFungibleTokenWithSECP256K1AdminKey(
       tokenCreateContract,
       signers[0].address,
       utils.getSignerCompressedPublicKey(),
     );
     await hapi.updateTokenKeys(tokenAddress, contractKeys);
-    // The custom-fee create tests use the contract as fee collector denominated
-    // in tokenAddress, so the contract must be associated + KYC-granted on it.
     await tokenCreateContract.associateTokenPublic(
       contractKeys[0],
       tokenAddress,
@@ -70,8 +64,6 @@ describe('TokenCreateContract Test Suite', function () {
       utils.getSignerCompressedPublicKey(),
     );
     await hapi.updateTokenKeys(nftTokenAddress, contractKeys);
-    // signer1 is a non-treasury holder used by the dissociate/KYC tests: it
-    // self-associates with its own key, then the contract grants it KYC.
     await hapi.associateWithSigner(signer1Pk, tokenAddress);
     await hapi.associateWithSigner(signer1Pk, nftTokenAddress);
     await tokenCreateContract.grantTokenKycPublic(
@@ -85,10 +77,6 @@ describe('TokenCreateContract Test Suite', function () {
       Constants.GAS_LIMIT_1_000_000,
     );
     await utils.mintNFT(tokenCreateContract, nftTokenAddress);
-    // A KeyList account keyed to the contracts is the (dis)association subject
-    // for the dissociate tests: the contracts can act on it, and it never sends
-    // a transaction, so no EOA needs re-keying. Start it associated so it can be
-    // dissociated then re-associated.
     const keyListAccount =
       await hapi.createAccountWithContractIdKey(contractKeys);
     keyListAccountAddress = keyListAccount.address;
@@ -314,8 +302,6 @@ describe('TokenCreateContract Test Suite', function () {
     let signers;
 
     before(async function () {
-      // Relay model: no account re-keying — signer0 stays a plain-ECDSA sender
-      // so createTokenviaSystemContract's EthereumTransaction is accepted.
       signers = await ethers.getSigners();
       tokenCreateContract = await utils.deployTokenCreateContract();
       tokenQueryContract = await utils.deployTokenQueryContract();

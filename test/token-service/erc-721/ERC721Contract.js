@@ -23,16 +23,11 @@ describe('ERC721Contract Test Suite', function () {
     erc721Contract = await utils.deployERC721Contract();
     const tokenCreateAddr = await tokenCreateContract.getAddress();
     const erc721Addr = await erc721Contract.getAddress();
-    // Relay model: no account re-keying. The token is precompile-created (so the
-    // contract can read its ERC721 facade) with the CONTRACT as treasury — a
-    // contract authorizes itself, whereas an EOA treasury would need re-keying.
     tokenAddress = await utils.createNonFungibleToken(
       tokenCreateContract,
       tokenCreateAddr,
     );
-    // Recipients must be associated + KYC-granted. Signers self-associate with
-    // their own key; the contract holds the inherited KYC key so it grants KYC
-    // without the target signing.
+
     await hapi.associateWithSigner(
       utils.getHardhatSignerPrivateKeyByIndex(0),
       tokenAddress,
@@ -61,8 +56,7 @@ describe('ERC721Contract Test Suite', function () {
       erc721Addr,
       Constants.GAS_LIMIT_1_000_000,
     );
-    // Mint straight to firstWallet: the treasury contract mints then transfers
-    // the NFT to msg.sender (firstWallet, the tx sender), authorized as owner.
+
     mintedTokenSerialNumber = await utils.mintNFTToAddress(
       tokenCreateContract,
       tokenAddress,
@@ -227,7 +221,6 @@ describe('ERC721Contract Test Suite', function () {
     let serialNumber;
 
     before(async function () {
-      // Mint straight to firstWallet (the tx sender), so no separate transfer.
       serialNumber = await utils.mintNFTToAddress(
         tokenCreateContract,
         tokenAddress,

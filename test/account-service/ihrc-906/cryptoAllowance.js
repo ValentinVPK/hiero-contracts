@@ -47,10 +47,6 @@ describe('@HAS IHRC-906 Test Suite', () => {
       })
     ).wait();
 
-    // An hbar owner the contract may approve on behalf of: its key is a
-    // threshold-1 KeyList holding cryptoAllowanceContract's id. Relay model —
-    // the hardhat signers stay plain-ECDSA senders, so the owner has to be a
-    // separate account that never sends a transaction itself.
     const contractKeyedOwner = await hapi.createAccountWithContractIdKey([
       cryptoAllowanceAddress,
     ]);
@@ -165,9 +161,7 @@ describe('@HAS IHRC-906 Test Suite', () => {
     );
     await approveTx.wait();
 
-    // cryptoTransferPublic — the debit is authorized by the allowance granted
-    // just above, so the leg must be flagged as approved (walletA is a plain
-    // ECDSA sender; its key does not include the contract).
+    // cryptoTransferPublic
     const cryptoTransfers = {
       transfers: [
         {

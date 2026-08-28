@@ -24,9 +24,6 @@ describe('TokenQueryContract Test Suite', function () {
     tokenQueryContract = await utils.deployTokenQueryContract();
     const tokenCreateAddr = await tokenCreateContract.getAddress();
     const tokenQueryAddr = await tokenQueryContract.getAddress();
-    // Relay model: no account re-keying. All tokens are contract-treasury
-    // precompile tokens, so the contract is the auto-associated holder the
-    // queries run against; signers are only referenced as addresses.
     tokenAddress = await utils.createFungibleToken(
       tokenCreateContract,
       tokenCreateAddr,

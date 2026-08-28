@@ -39,11 +39,6 @@ describe('TokenTransferContract Test Suite', function () {
       await tokenTransferContract.getAddress(),
     ];
     const signer1Pk = utils.getHardhatSignerPrivateKeyByIndex(1);
-    // Relay model: no account re-keying. Tokens use signer0's own ECDSA admin
-    // key + signer0 as treasury (signer0 signs the create), then updateTokenKeys
-    // hands operational keys to the contracts. signer0 stays a plain-ECDSA
-    // holder/sender and signs its own debits; signer1 self-associates + gets
-    // contract-granted KYC as the transfer counterparty.
     tokenAddress = await utils.createFungibleTokenWithSECP256K1AdminKey(
       tokenCreateContract,
       signers[0].address,
@@ -73,13 +68,6 @@ describe('TokenTransferContract Test Suite', function () {
       Constants.GAS_LIMIT_1_000_000,
     );
 
-    // The direct transfer precompiles (transferToken(s)/transferNFT(s)) do not
-    // honour allowances, so their source account must authorize the contract by
-    // key. A fresh account whose key is a threshold-1 KeyList of the three
-    // contracts provides that without re-keying an EOA — it only ever acts as a
-    // subject, never as an EthereumTransaction sender. It is associated and
-    // KYC-granted through the contract, then seeded from the treasury (signer0)
-    // with a native transfer signer0 signs itself.
     const holder = await hapi.createAccountWithContractIdKey(contractKeys);
     holderAddress = ethers.getAddress(holder.address);
     await (

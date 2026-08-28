@@ -21,14 +21,8 @@ describe('IERC20 Test Suite', function () {
   before(async function () {
     signers = await ethers.getSigners();
     tokenCreateContract = await utils.deployTokenCreateContract();
-    // v0.77: these are direct EOA ERC20 calls — signer0/signer1 own and move
-    // their OWN tokens, so they must stay plain-ECDSA senders (no
-    // updateAccountKeys). Create the token via the SDK with signer0 as treasury,
-    // so no contract intermediary needs a KeyList on those accounts.
     tokenAddress = await hapi.createFungibleTokenViaSdk(0);
     await sleep();
-    // signer1 self-associates (SDK, signed by its own key); the contract used as
-    // the transferFrom recipient associates itself.
     await hapi.associateWithSigner(
       utils.getHardhatSignerPrivateKeyByIndex(1),
       tokenAddress,

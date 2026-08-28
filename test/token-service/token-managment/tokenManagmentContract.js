@@ -98,13 +98,6 @@ describe('TokenManagmentContract Test Suite', function () {
     tokenCreateCustomContractAddress =
       await tokenCreateCustomContract.getAddress();
 
-    // Relay model: no account re-keying. The contracts here associate,
-    // dissociate and debit accounts on their behalf, all of which need the
-    // account's key to include the contract — impossible for a hardhat signer
-    // that still sends EthereumTransactions. Contract-keyed accounts take over
-    // as the token holders the tests act upon; signers[0] stays the treasury
-    // (burn reduces the treasury balance, which one test asserts) and keeps
-    // sending every transaction.
     const contractKeys = [
       tokenCreateContractAddress,
       tokenTransferContractAddress,
@@ -121,19 +114,9 @@ describe('TokenManagmentContract Test Suite', function () {
     holderC = ethers.getAddress(
       (await hapi.createAccountWithContractIdKey(contractKeys, 2000)).address,
     );
-    // Treasury and fee collector for the per-test tokens in the "Update fees"
-    // suite. Those tokens are created fresh in each test, so their treasury has
-    // to be an account the contracts can debit — otherwise the transfer that
-    // seeds a holder cannot come from it. Kept out of every association list,
-    // since a treasury is associated to its own token already.
     holderT = ethers.getAddress(
       (await hapi.createAccountWithContractIdKey(contractKeys, 2000)).address,
     );
-    // Treasury of the main suite's tokens. It has to be an account the
-    // contracts may act for: updateTokenInfo carries the treasury field and so
-    // needs its authorization, and it is the source of every transfer the tests
-    // make. signers[0] can be neither now that it is not re-keyed, so it only
-    // signs token creates (as the admin key) and pays for every transaction.
     holderS = ethers.getAddress(
       (await hapi.createAccountWithContractIdKey(contractKeys, 2000)).address,
     );
@@ -169,9 +152,6 @@ describe('TokenManagmentContract Test Suite', function () {
       nftTokenAddress,
     );
 
-    // The holders are associated and KYC-granted through the contract (their
-    // keys include it), then seeded from the treasury with a native transfer
-    // signers[0] signs itself — the contracts cannot debit the treasury.
     await utils.associateAndGrantKyc(tokenCreateContract, tokenAddress, [
       holderA,
       holderB,
@@ -703,9 +683,6 @@ describe('TokenManagmentContract Test Suite', function () {
 
         await utils.associateToken(tokenCreateContract, tokenAddress);
         await utils.grantTokenKyc(tokenCreateContract, tokenAddress);
-        // These blocks replace the shared token, so the holders have to be
-        // associated to the new one as well — utils.associateToken only reaches
-        // the contract itself now.
         await utils.associateAndGrantKyc(tokenCreateContract, tokenAddress, [
           holderA,
           holderB,
@@ -1172,9 +1149,6 @@ describe('TokenManagmentContract Test Suite', function () {
         await utils.associateToken(tokenCreateContract, tokenAddress);
 
         await utils.grantTokenKyc(tokenCreateContract, tokenAddress);
-        // This block replaces the shared token, so the holders have to be
-        // associated to the new one as well — utils.associateToken only
-        // reaches the contract itself now.
         await utils.associateAndGrantKyc(tokenCreateContract, tokenAddress, [
           holderA,
           holderB,
@@ -1401,9 +1375,6 @@ describe('TokenManagmentContract Test Suite', function () {
 
           await utils.associateToken(tokenCreateContract, tokenAddress);
           await utils.grantTokenKyc(tokenCreateContract, tokenAddress);
-          // This block replaces the shared token, so the holders have to be
-          // associated to the new one as well — utils.associateToken only
-          // reaches the contract itself now.
           await utils.associateAndGrantKyc(tokenCreateContract, tokenAddress, [
             holderA,
             holderB,
@@ -2100,10 +2071,6 @@ describe('TokenManagmentContract Test Suite', function () {
         holderC,
       );
       await utils.associateToken(tokenCreateCustomContract, feeToken2);
-      // The fee collector has to be associated with the token a fixed fee is
-      // denominated in, or the create fails with
-      // TOKEN_NOT_ASSOCIATED_TO_FEE_COLLECTOR. utils.associateToken only
-      // reaches the contract itself now.
       await utils.associateAndGrantKyc(tokenCreateCustomContract, feeToken2, [
         holderT,
       ]);
@@ -2231,10 +2198,6 @@ describe('TokenManagmentContract Test Suite', function () {
         holderC,
       );
       await utils.associateToken(tokenCreateCustomContract, feeToken2);
-      // The fee collector has to be associated with the token a fixed fee is
-      // denominated in, or the create fails with
-      // TOKEN_NOT_ASSOCIATED_TO_FEE_COLLECTOR. utils.associateToken only
-      // reaches the contract itself now.
       await utils.associateAndGrantKyc(tokenCreateCustomContract, feeToken2, [
         holderT,
       ]);
@@ -2366,10 +2329,6 @@ describe('TokenManagmentContract Test Suite', function () {
         holderC,
       );
       await utils.associateToken(tokenCreateCustomContract, feeToken2);
-      // The fee collector has to be associated with the token a fixed fee is
-      // denominated in, or the create fails with
-      // TOKEN_NOT_ASSOCIATED_TO_FEE_COLLECTOR. utils.associateToken only
-      // reaches the contract itself now.
       await utils.associateAndGrantKyc(tokenCreateCustomContract, feeToken2, [
         holderT,
       ]);
@@ -2756,10 +2715,6 @@ describe('TokenManagmentContract Test Suite', function () {
 
     it('should be able to update fixed HTS fee for NFT', async function () {
       await utils.associateToken(tokenCreateCustomContract, feeToken);
-      // The fee collector has to be associated with the token a fixed fee is
-      // denominated in, or the create fails with
-      // TOKEN_NOT_ASSOCIATED_TO_FEE_COLLECTOR. utils.associateToken only
-      // reaches the contract itself now.
       await utils.associateAndGrantKyc(tokenCreateCustomContract, feeToken, [
         holderT,
       ]);
@@ -2824,9 +2779,6 @@ describe('TokenManagmentContract Test Suite', function () {
       await hapi.getHbarBalance(holderB);
       await hapi.getHbarBalance(holderA);
 
-      // The holder has to be associated with the fee token before KYC can be
-      // granted on it; that association used to come from utils.associateToken
-      // reaching the signers, which needed their keys to include the contract.
       await utils.associateAndGrantKyc(tokenCreateCustomContract, feeToken, [
         holderA,
       ]);
@@ -2877,10 +2829,6 @@ describe('TokenManagmentContract Test Suite', function () {
 
     it('should be able to update fixed HTS fee and royalty fee in NFT', async function () {
       await utils.associateToken(tokenCreateCustomContract, feeToken);
-      // The fee collector has to be associated with the token a fixed fee is
-      // denominated in, or the create fails with
-      // TOKEN_NOT_ASSOCIATED_TO_FEE_COLLECTOR. utils.associateToken only
-      // reaches the contract itself now.
       await utils.associateAndGrantKyc(tokenCreateCustomContract, feeToken, [
         holderT,
       ]);
@@ -2980,9 +2928,6 @@ describe('TokenManagmentContract Test Suite', function () {
       expect(tokenInfoResponse[0][7][0][4]).to.equal(true);
       expect(updateFeeResponseCode).to.equal(TX_SUCCESS_CODE);
 
-      // The holder has to be associated with the fee token before KYC can be
-      // granted on it; that association used to come from utils.associateToken
-      // reaching the signers, which needed their keys to include the contract.
       await utils.associateAndGrantKyc(tokenCreateCustomContract, feeToken, [
         holderA,
       ]);

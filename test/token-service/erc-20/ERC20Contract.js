@@ -18,10 +18,6 @@ describe('ERC20Contract Test Suite', function () {
     signers = await ethers.getSigners();
     tokenCreateContract = await utils.deployTokenCreateContract();
     erc20Contract = await utils.deployERC20Contract();
-    // Contract-controlled token: the creating contract is its own treasury, so
-    // all keys inherit the contract and no EOA is re-keyed (relay model). A
-    // contract can read an HTS token's ERC20 facade only when the token was
-    // created through the precompile like this.
     tokenAddress = await utils.createFungibleToken(
       tokenCreateContract,
       await tokenCreateContract.getAddress(),

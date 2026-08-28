@@ -40,18 +40,10 @@ describe('HIP904Batch1 AirdropContract Test Suite', function () {
       await tokenCreateContract.getAddress(),
     ];
 
-    // Relay model: no account re-keying. The Airdrop contract debits the sender
-    // and leaves isApproval false, so the sender's key has to include the
-    // contract — which a hardhat signer cannot have while it still sends
-    // EthereumTransactions. The airdrop sender is therefore a contract-keyed
-    // account that only ever acts as a subject (signers[0] still sends every
-    // transaction), and it is the treasury of every token created below, so it
-    // holds the supply without any seeding transfer.
+
     owner = (await hapi.createAccountWithContractIdKey(contractAddresses))
       .address;
-    // A second contract-keyed account, associated but holding nothing, so the
-    // insufficient-balance test fails on the balance rather than on
-    // authorization or a missing association.
+
     emptySender = (await hapi.createAccountWithContractIdKey(contractAddresses))
       .address;
 
@@ -75,12 +67,6 @@ describe('HIP904Batch1 AirdropContract Test Suite', function () {
       )
     ).wait();
 
-    // The receivers used to be associated to each token through the contract,
-    // which only worked while their keys included it. Instead let them accept
-    // any token automatically — a call each account makes on itself, so no key
-    // relationship is needed — otherwise every airdrop below lands as a pending
-    // airdrop and reverts for want of the pending-airdrop fee. The tests that
-    // want a pending airdrop use their own fresh account and opt back out.
     const IHRC904AccountFacade = new ethers.Interface(
       (await hre.artifacts.readArtifact('IHRC904AccountFacade')).abi,
     );
