@@ -40,7 +40,6 @@ describe('HIP904Batch1 AirdropContract Test Suite', function () {
       await tokenCreateContract.getAddress(),
     ];
 
-
     owner = (await hapi.createAccountWithContractIdKey(contractAddresses))
       .address;
 
